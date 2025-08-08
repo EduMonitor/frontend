@@ -1,35 +1,37 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Route, Routes } from "react-router-dom";
+import { AuthRoutes, PagesRoutes } from "./constants/routes.constant";
+import { lazy, Suspense } from "react";
+import ThemeToggleButton from "./components/theme/toggle.theme";
+import { Spinner } from "./components/spinner/spinners.spinners";
+
+// Only lazy load heavy/rare pages
+const Error404 = lazy(() => import("./pages/errors/404.errors"));
+const Error403 = lazy(() => import("./pages/errors/403.errors"));
+
+// Direct import for lightweight/critical pages
+import SignInAuth from "./auth/signin.auth";
+import TwoFactorAuth from "./auth/2fA.auth";
+import SignUpAuth from "./auth/signup.auth";
+import ForgotPages from "./auth/forgot.auth";
+import EmailVerifyPage from "./auth/verify.auth";
 
 function App() {
-  const [count, setCount] = useState(0)
-
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <Suspense fallback={<Spinner isLoading={true} />}>
+        <Routes>
+          <Route path={AuthRoutes.signIn} element={<SignInAuth />} />
+          <Route path={AuthRoutes.signUp} element={<SignUpAuth />} />
+           <Route path={AuthRoutes.forgotPassword} element={<ForgotPages />} />
+           <Route path={AuthRoutes.verifyEmail} element={<EmailVerifyPage />} />
+          <Route path={AuthRoutes.twoFactor} element={<TwoFactorAuth />} />
+          <Route path={PagesRoutes.errorPages.Error404} element={<Error404 />} />
+          <Route path={PagesRoutes.errorPages.Error403} element={<Error403 />} />
+        </Routes>
+        <ThemeToggleButton />
+      </Suspense>
     </>
-  )
+  );
 }
 
-export default App
+export default App;

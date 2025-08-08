@@ -301,7 +301,7 @@ export const darkTheme = createTheme({
         divider: alpha(gray[600], 0.3),
         sidebar: 'hsl(220, 45%, 8%)',
         background: {
-            default: 'hsl(220, 30%, 10%)',
+            default: 'linear-gradient(135deg, #0F0F23 0%, #1A1A2E 50%, #16213E 100%)',
             paper: 'hsl(220, 35%, 12%)',
         },
         text: {
@@ -374,7 +374,7 @@ export const lightTheme = createTheme({
         divider: alpha(gray[300], 0.4),
         sidebar: 'hsl(220, 20%, 96%)',
         background: {
-            default: 'hsl(220, 20%, 98%)',
+            default: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 50%, #cbd5e1 100%)',
             paper: '#ffffff',
         },
         text: {
