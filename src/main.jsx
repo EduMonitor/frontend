@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { disableReactDevTools } from '@fvilers/disable-react-devtools';
 import { ThemeContextProvider } from './utils/hooks/contexts/theme.context.jsx'
+import { AuthProvider } from './utils/hooks/contexts/auth.context.jsx'
 if (import.meta.env.VITE_APP_ENV === "production") {
   disableReactDevTools();
   console.warn = () => { };
@@ -16,6 +17,7 @@ const queryClient = new QueryClient();
 createRoot(document.getElementById('root')).render(
   <StrictMode>
       <ThemeContextProvider>
+        <AuthProvider>
           <CssBaseline />
           <GlobalStyles
             styles={{
@@ -28,7 +30,7 @@ createRoot(document.getElementById('root')).render(
               <App />
             </QueryClientProvider>
           </BrowserRouter>
-       
+        </AuthProvider>
       </ThemeContextProvider>
   </StrictMode>
 )

@@ -1,6 +1,5 @@
 import { FaCheck, FaTimes } from "react-icons/fa"
 import Box from '@mui/material/Box'
-import Avatar from '@mui/material/Avatar'
 import Slide from '@mui/material/Slide'
 import Typography from '@mui/material/Typography'
 import Chip from '@mui/material/Chip'

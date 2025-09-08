@@ -1,73 +1,107 @@
 import { memo, useState } from 'react';
 import PropTypes from 'prop-types';
-import { AppBar, Toolbar, IconButton, Badge, Menu, MenuItem, Divider, Avatar, Typography, Box, Select } from '@mui/material';
+import { AppBar, Toolbar, IconButton, Badge, Menu, MenuItem, Divider, Avatar, Typography, Box } from '@mui/material';
 import { FiMenu, FiChevronDown, FiBell } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles';
 
-import { useLoginText } from '../../../constant/strings/text.strings';
-import LazyImage from '../../imagesloader/images.loader';
-import { stringAvatar } from '../../avatar/name.avatar';
-import { useUsersRoute } from '../../../constant/strings/routing.strings';
-import { formatDate } from '../../../utiles/helpers/functions/data-format.functions';
+import { authConfig } from '../../constants/string.constants';
+import { stringAvatar } from '../avatars/avatars.avatar';
+import { AdminRoutes } from '../../constants/routes.constant';
+import { formatDate } from '../../utils/functions/format-date.functions';
+import useAuthTheme from '../../auth/sections/themeHook.sections';
 
-const MobileNav = memo(({ onOpen, name, onLogout, title, profileImage ,markAsRead,notifications}) => {
-    const loginText = useLoginText();
-
+const MobileNav = memo(({ onOpen, name, onLogout, title, profileImage, markAsRead, notifications }) => {
     const [anchorEl, setAnchorEl] = useState(null);
-    const userRouters = useUsersRoute()
-    const openMenu = (event) => setAnchorEl(event.currentTarget);
     const [notifAnchorEl, setNotifAnchorEl] = useState(null);
-
+    
+    const theme = useTheme();
+    const authTheme = useAuthTheme();
+    
+    const openMenu = (event) => setAnchorEl(event.currentTarget);
     const handleNotifMenuOpen = (event) => setNotifAnchorEl(event.currentTarget);
     const unreadCountNotifs = notifications?.filter(n => !n.read).length;
 
-       const handleMenuClose = () => {
-           setAnchorEl(null);
-           setNotifAnchorEl(null);
-       };
-   
-    const closeMenu = () => setAnchorEl(null);
+    const handleMenuClose = () => {
+        setAnchorEl(null);
+        setNotifAnchorEl(null);
+    };
 
+    const closeMenu = () => setAnchorEl(null);
 
     return (
         <AppBar
             position="fixed"
             sx={{
-                backgroundColor: 'transparent',
+                background: authTheme.background || theme.palette.background.paper,
                 backdropFilter: 'blur(8px)',
                 zIndex: 1000,
+                borderRadius: 0,
                 ml: { sm: 0, md: '250px' },
-                boxShadow: 6,
+                boxShadow: theme.shadows[6],
                 width: { sm: '100vw', md: 'calc(100% - 250px)' },
+                borderBottom: `1px solid ${theme.palette.divider}`,
             }}
         >
             <Toolbar sx={{ justifyContent: 'space-between', px: { xs: 2, md: 4 } }}>
                 <Box sx={{ display: { xs: 'none', md: 'flex' } }}>
-                    <Typography variant="h6">{title}</Typography>
+                    <Typography 
+                        sx={{
+                            color: authTheme.textPrimary || theme.palette.text.primary,
+                        }} 
+                        variant="h6"
+                    >
+                        {title}
+                    </Typography>
                 </Box>
 
                 <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center' }}>
-                    <IconButton onClick={onOpen} color="black">
+                    <IconButton 
+                        onClick={onOpen} 
+                        sx={{ 
+                            color: theme.palette.text.primary,
+                            '&:hover': {
+                                backgroundColor: theme.palette.action.hover,
+                            }
+                        }}
+                    >
                         <FiMenu />
                     </IconButton>
-                    <LazyImage src="/images/logo/logo.png" style={{ height: 45, borderRadius: '10px' }} />
+                    <img src="/logo.png" style={{ height: 45, marginLeft: '8px' }} />
                 </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    
-
                     <Box>
-                        <IconButton sx={{ mx: 1, bgcolor: 'black' }} color="inherit" onClick={handleNotifMenuOpen}>
+                        <IconButton 
+                            sx={{ 
+                                mx: 1, 
+                                backgroundColor: theme.palette.action.selected,
+                                color: theme.palette.text.primary,
+                                '&:hover': {
+                                    backgroundColor: theme.palette.action.hover,
+                                }
+                            }} 
+                            onClick={handleNotifMenuOpen}
+                        >
                             <Badge badgeContent={unreadCountNotifs} color="error">
                                 <FiBell />
                             </Badge>
                         </IconButton>
+                        
                         <Menu
                             anchorEl={notifAnchorEl}
                             open={Boolean(notifAnchorEl)}
                             onClose={handleMenuClose}
-                            PaperProps={{
-                                sx: { color: 'common.white', maxWidth: 400, p: 1 },
+                            slotProps={{
+                                paper: {
+                                    sx: { 
+                                        maxWidth: 400, 
+                                        p: 1,
+                                        backgroundColor: theme.palette.background.paper,
+                                        color: theme.palette.text.primary,
+                                        border: `1px solid ${theme.palette.divider}`,
+                                    },
+                                },
                             }}
                         >
                             {notifications?.length > 0 ? (
@@ -83,17 +117,24 @@ const MobileNav = memo(({ onOpen, name, onLogout, title, profileImage ,markAsRea
                                             display: 'block',
                                             p: 1,
                                             borderRadius: 1,
-                                            '&:hover': { bgcolor: 'primary.dark' },
+                                            '&:hover': { 
+                                                bgcolor: theme.palette.action.hover,
+                                            },
+                                            color: theme.palette.text.primary,
                                         }}
                                     >
                                         <Box>
-                                            <Typography fontSize={18} fontWeight="bold">
+                                            <Typography 
+                                                fontSize={18} 
+                                                fontWeight="bold"
+                                                color={theme.palette.text.primary}
+                                            >
                                                 {'Type Notification'}
-
                                             </Typography>
                                             <Typography
                                                 fontSize={15}
                                                 mt={1}
+                                                color={theme.palette.text.primary}
                                                 sx={{
                                                     display: '-webkit-box',
                                                     WebkitBoxOrient: 'vertical',
@@ -108,7 +149,12 @@ const MobileNav = memo(({ onOpen, name, onLogout, title, profileImage ,markAsRea
                                             >
                                                 {notif.message}
                                             </Typography>
-                                            <Typography fontSize={12} mt={2} color="textSecondary" textAlign="right">
+                                            <Typography 
+                                                fontSize={12} 
+                                                mt={2} 
+                                                color={theme.palette.text.secondary} 
+                                                textAlign="right"
+                                            >
                                                 {formatDate(notif.createdAt)}
                                             </Typography>
                                         </Box>
@@ -116,7 +162,7 @@ const MobileNav = memo(({ onOpen, name, onLogout, title, profileImage ,markAsRea
                                 ))
                             ) : (
                                 <MenuItem disabled>
-                                    <Typography color="textSecondary" fontSize={15}>
+                                    <Typography color={theme.palette.text.secondary} fontSize={15}>
                                         No new messages
                                     </Typography>
                                 </MenuItem>
@@ -124,11 +170,15 @@ const MobileNav = memo(({ onOpen, name, onLogout, title, profileImage ,markAsRea
                         </Menu>
                     </Box>
 
-                    {/* <IconButton sx={{ mx: 1, bgcolor: 'black' }}>
-                        <FaGraduationCap />
-                    </IconButton> */}
-
-                    <IconButton onClick={openMenu} color="black">
+                    <IconButton 
+                        onClick={openMenu} 
+                        sx={{
+                            color: theme.palette.text.primary,
+                            '&:hover': {
+                                backgroundColor: theme.palette.action.hover,
+                            }
+                        }}
+                    >
                         {profileImage ? (
                             <Badge color="secondary" variant="dot">
                                 <Avatar src={profileImage} alt={name} />
@@ -136,28 +186,52 @@ const MobileNav = memo(({ onOpen, name, onLogout, title, profileImage ,markAsRea
                         ) : (
                             <Avatar {...stringAvatar(name)} />
                         )}
-                        <FiChevronDown />
+                        <FiChevronDown style={{ marginLeft: '4px' }} />
                     </IconButton>
 
                     <Menu
                         anchorEl={anchorEl}
                         open={Boolean(anchorEl)}
                         onClose={closeMenu}
-                        PaperProps={{
-                            sx: {
-                                backgroundColor: 'primary.main',
-                                color: 'common.white',
+                        slotProps={{
+                            paper: {
+                                sx: {  
+                                    backgroundColor: theme.palette.background.paper,
+                                    color: theme.palette.text.primary,
+                                    border: `1px solid ${theme.palette.divider}`,
+                                },
                             },
                         }}
                     >
-                        <MenuItem onClick={closeMenu}>
-                            <Link to={userRouters.settings.profile} style={{ color: 'inherit', textDecoration: 'none' }}>
+                        <MenuItem 
+                            onClick={closeMenu}
+                            sx={{
+                                '&:hover': {
+                                    backgroundColor: theme.palette.action.hover,
+                                }
+                            }}
+                        >
+                            <Link 
+                                to={AdminRoutes.profiles} 
+                                style={{ 
+                                    color: theme.palette.text.primary, 
+                                    textDecoration: 'none' 
+                                }}
+                            >
                                 {'Profile'}
                             </Link>
                         </MenuItem>
-                        <Divider sx={{ my: 0.5, borderColor: 'primary.light' }} />
-                        <MenuItem onClick={onLogout} sx={{ color: 'white' }}>
-                            {loginText.Logout}
+                        <Divider sx={{ my: 0.5, borderColor: theme.palette.divider }} />
+                        <MenuItem 
+                            onClick={onLogout} 
+                            sx={{ 
+                                color: theme.palette.text.primary,
+                                '&:hover': {
+                                    backgroundColor: theme.palette.action.hover,
+                                }
+                            }}
+                        >
+                            {authConfig.logOut.title}
                         </MenuItem>
                     </Menu>
                 </Box>

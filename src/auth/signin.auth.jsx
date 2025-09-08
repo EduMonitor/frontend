@@ -18,7 +18,7 @@ import {
 } from 'react-icons/fa';
 import DOMPurify from 'dompurify'
 import InputField from '../components/forms/input.forms';
-import { Spinner } from '../components/spinner/spinners.spinners';
+import {  SubmittingSpinner } from '../components/spinner/spinners.spinners';
 import { signInValidator } from '../utils/validators/input.validators';
 import useToast from '../components/toast/toast.toast';
 import { loginForm } from '../constants/forms.constant';
@@ -30,6 +30,9 @@ import { CardBox } from '../components/cards/card.card';
 import { useNavigate } from 'react-router-dom';
 import { Link } from '@mui/material';
 import { authConfig } from '../constants/string.constants';
+import { axiosPrivate } from '../utils/hooks/instance/axios.instance';
+import useAuth from '../utils/hooks/contexts/useAth.contexts';
+import { fetchCsrfToken } from '../utils/hooks/token/csrf.token';
 
 const SignInAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -40,7 +43,7 @@ const SignInAuth = () => {
     rememberMe: false
   });
   const { showToast, ToastComponent } = useToast()
-
+  const { setAuth } = useAuth();
   const navigate = useNavigate();
   const [errors, setErrors] = useState({})
   const theme = useAuthTheme();
@@ -67,22 +70,27 @@ const SignInAuth = () => {
     setIsLoading(true);
     try {
       await signinSchema.validate(values, { abortEarly: false });
-      setIsLoading(false);
-      // const clientData = {
-      //     emailOrPhone:  values.email.toLowerCase().trim(),
-      //     password: values.password.trim()
-      // };
+      const csrfToken = await fetchCsrfToken();
+      console.log("CSRF Token:", csrfToken);
+      const clientData = {
+        email: values.email.toLowerCase().trim(),
+        password: values.password.trim()
+      };
 
-      // const response = await axiosPrivate.post('/api/signin', clientData);
+      const response = await axiosPrivate.post('/api/v2/signin', clientData, { headers: { "x-csrf-token": csrfToken } });
 
-      // if (response.status === 200 || response.status === 201) {
-      //     const result = response.data;
-      //     setAuth({ accessToken: result.token, role: result.role, refreshToken: result.refresh_token });
-      //     localStorage.setItem("persist", true);
-      //     localStorage.setItem('refresh_token', result.refresh_token);
-      //     navigate(result.redirection, { replace: true });
-      //     showToast({ title: "Success", description: result.message, status: "success" });
-      // }
+      if (response.status === 200 || response.status === 201) {
+        const result = response.data;
+        if(result.status==="verification_required"){
+        showToast({ title: "Verification Required", description: result.message, status: "warning" });
+        navigate(result.redirectUrl, { replace: true });
+        return;
+      }
+      setAuth({ accessToken: result.accessToken, role: result.data.role });
+      localStorage.setItem("persist", true);
+      navigate(result.redirectUrl, { replace: true });
+      showToast({ title: "Success", description: result.message, status: "success" });
+      }
     } catch (error) {
       if (error.response && error.response.data.message) {
         showToast({ title: "", description: error.response.data.message, status: "error" });
@@ -96,7 +104,7 @@ const SignInAuth = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [signinSchema, values, showToast]);
+  }, [signinSchema, values, setAuth, navigate, showToast]);
 
 
   const renderedFormInputs = useMemo(() => (
@@ -182,7 +190,7 @@ const SignInAuth = () => {
                         mb: 1,
                       }}
                     >
-                    {authConfig.signIn.title}
+                      {authConfig.signIn.title}
                     </Typography>
                     <Typography
                       variant="body2"
@@ -340,7 +348,7 @@ const SignInAuth = () => {
       </Container>
 
       {/* Loading Backdrop */}
-      <Spinner isLoading={isLoading} />
+      <SubmittingSpinner isLoading={isLoading} />
       {ToastComponent}
     </Box>
   );

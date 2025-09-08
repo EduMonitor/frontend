@@ -20,7 +20,6 @@ import {
 import DOMPurify from 'dompurify'
 import InputField from '../components/forms/input.forms';
 import { Spinner } from '../components/spinner/spinners.spinners';
-import { signInValidator } from '../utils/validators/input.validators';
 import useToast from '../components/toast/toast.toast';
 import { registerForm } from '../constants/forms.constant';
 import useAuthTheme from './sections/themeHook.sections';
@@ -30,10 +29,12 @@ import { BrandingSection } from '../components/animations/branding.animations';
 import { CardBox } from '../components/cards/card.card';
 import { Link, useNavigate } from 'react-router-dom';
 import { authConfig } from '../constants/string.constants';
-
+import { signUpValidator } from '../utils/validators/input.validators';
+import { fetchCsrfToken } from '../utils/hooks/token/csrf.token';
+import { axiosPrivate } from '../utils/hooks/instance/axios.instance';
 const SignUpAuth = () => {
     const [isLoading, setIsLoading] = useState(false);
-    const signinSchema = signInValidator()
+    const signUpSchema = signUpValidator()
     const [values, setValues] = useState({
         email: "",
         password: "",
@@ -60,9 +61,9 @@ const SignUpAuth = () => {
     };
 
     const getPasswordStrengthLabel = (strength) => {
-        if (strength < 40) return "weak";
-        if (strength < 80) return "medium";
-        return "strong";
+        if (strength < 40) return "Weak";
+        if (strength < 80) return "Medium";
+        return "Strong";
     };
 
     const handleInputChange = useCallback((event) => {
@@ -83,41 +84,82 @@ const SignUpAuth = () => {
     }, []);
 
 
-    const handleLogin = useCallback(async (e) => {
+    const handleSubmit = useCallback(async (e) => {
         e.preventDefault();
         setIsLoading(true);
+
         try {
-            await signinSchema.validate(values, { abortEarly: false });
-            setIsLoading(false);
-            // const clientData = {
-            //     emailOrPhone:  values.email.toLowerCase().trim(),
-            //     password: values.password.trim()
-            // };
+            // Validate form first
+            await signUpSchema.validate(values, { abortEarly: false });
 
-            // const response = await axiosPrivate.post('/api/signin', clientData);
+            // Get CSRF token
+            const csrfToken = await fetchCsrfToken();
 
-            // if (response.status === 200 || response.status === 201) {
-            //     const result = response.data;
-            //     setAuth({ accessToken: result.token, role: result.role, refreshToken: result.refresh_token });
-            //     localStorage.setItem("persist", true);
-            //     localStorage.setItem('refresh_token', result.refresh_token);
-            //     navigate(result.redirection, { replace: true });
-            //     showToast({ title: "Success", description: result.message, status: "success" });
-            // }
-        } catch (error) {
-            if (error.response && error.response.data.message) {
-                showToast({ title: "", description: error.response.data.message, status: "error" });
-            } else if (error.inner) {
-                const validationErrors = {};
-                error.inner.forEach((err) => { validationErrors[err.path] = err.message; });
-                setErrors(validationErrors);
-            } else {
-                showToast({ title: "", description: error.message, status: "error" });
+            const clientData = {
+                firstName: values.firstName.trim(),
+                lastName: values.lastName.trim(),
+                email: values.email.toLowerCase().trim(),
+                password: values.password.trim(),
+            };
+
+            const response = await axiosPrivate.post(`/api/v2/signup`, clientData, {
+                headers: { "x-csrf-token": csrfToken },
+            });
+
+            if (response.status === 200 || response.status === 201) {
+                showToast({
+                    title: "Success",
+                    description: response.data.message || "Account created successfully",
+                    status: "success",
+                });
+                navigate(response.data.redirectUrl, { replace: true });
             }
+
+        } catch (error) {
+            console.error('Signup error:', error);
+
+            if (error.response?.data) {
+                // New errorHandler format
+                const apiError = error.response.data.errors || {};
+                const safeMessage = error.response.data.message || "An error occurred during signup";
+
+                showToast({
+                    title: ``,
+                    description: safeMessage,
+                    status: "error"
+                });
+                setErrors(apiError);
+
+
+            } else if (error.inner) {
+                // Yup validation errors
+                const validationErrors = {};
+                error.inner.forEach((err) => {
+                    validationErrors[err.path] = err.message;
+                });
+                setErrors(validationErrors);
+
+            } else if (error.message) {
+                // Network or unexpected errors
+                showToast({
+                    title: "Error",
+                    description: error.message,
+                    status: "error"
+                });
+
+            } else {
+                // Catch-all
+                showToast({
+                    title: "Error",
+                    description: "An unexpected error occurred",
+                    status: "error"
+                });
+            }
+
         } finally {
             setIsLoading(false);
         }
-    }, [signinSchema, values, showToast]);
+    }, [signUpSchema, values, showToast, navigate]);
 
 
     const renderedFormInputs = useMemo(() => {
@@ -267,128 +309,131 @@ const SignUpAuth = () => {
                                                 mb: 1,
                                             }}
                                         >
-                                           {authConfig.signUp.title}
+                                            {authConfig.signUp.title}
                                         </Typography>
                                         <Typography
                                             variant="body2"
                                             sx={{ color: theme.textSecondary }}
                                         >
-                                             {authConfig.signUp.subtile}
+                                            {authConfig.signUp.subtile}
                                         </Typography>
                                     </Box>
 
                                     <Box display={"flex"} sx={{ flexDirection: "column", gap: 3 }}>
-                                        {renderedFormInputs}
-                                        {values.password && (
-                                            <Box>
-                                                <Typography variant="body2" mb={1}>
-                                                    Password Strength <strong>{getPasswordStrengthLabel(passwordStrength)}</strong>
-                                                </Typography>
+                                        <form onSubmit={handleSubmit}>
+                                            {renderedFormInputs}
+                                            {values.password && (
                                                 <Box>
-                                                    <LinearProgress
-                                                        variant="determinate"
-                                                        value={passwordStrength}
-                                                        color={
-                                                            passwordStrength < 40
-                                                                ? "error"
-                                                                : passwordStrength < 80
-                                                                    ? "warning"
-                                                                    : "success"
-                                                        }
-                                                    />
-                                                </Box>
-                                            </Box>
-                                        )}
-                                        <Box >
-                                            <FormControlLabel
-                                                control={
-                                                    <Checkbox
-                                                        name="termeCondition"
-                                                        checked={values.termeCondition}
-                                                        onChange={handleInputChange}
-                                                        color="primary"
-                                                    />
-                                                }
-                                                label={
-                                                    <Typography variant="body2">
-                                                        I Aggree with{' '}
-                                                        <Link
-                                                            href="#"
-                                                            sx={{
-                                                                color: 'primary.main',
-                                                                textDecoration: 'none',
-                                                                fontWeight: 600,
-                                                                '&:hover': { textDecoration: 'underline' }
-                                                            }}
-                                                        >
-                                                            Terme Conditions
-                                                        </Link>
-                                                        {' '}and{' '}
-                                                        <Link
-                                                            href="#"
-                                                            sx={{
-                                                                color: 'primary.main',
-                                                                textDecoration: 'none',
-                                                                fontWeight: 600,
-                                                                '&:hover': { textDecoration: 'underline' }
-                                                            }}
-                                                        >
-                                                            privacy Policy
-                                                        </Link>
+                                                    <Typography variant="body2" my={2}>
+                                                        Password Strength <strong>{getPasswordStrengthLabel(passwordStrength)}</strong>
                                                     </Typography>
-                                                }
-                                            />
-                                            {errors.termeCondition && (
-                                                <Typography variant="body2" color="error" sx={{ mt: 1, ml: 4 }}>
-                                                    {errors.termeCondition}
-                                                </Typography>
+                                                    <Box>
+                                                        <LinearProgress
+                                                            variant="determinate"
+                                                            value={passwordStrength}
+                                                            color={
+                                                                passwordStrength < 40
+                                                                    ? "error"
+                                                                    : passwordStrength < 80
+                                                                        ? "warning"
+                                                                        : "success"
+                                                            }
+                                                        />
+                                                    </Box>
+                                                </Box>
                                             )}
-                                        </Box>
-                                        <Button
-                                            fullWidth
-                                            variant="contained"
-                                            size="large"
-                                            onClick={handleLogin}
-                                            disabled={isLoading}
-                                            sx={{
-                                                height: 56,
-                                                borderRadius: 2,
-                                                background: 'linear-gradient(135deg, #4A90E2, #50C878)',
-                                                fontSize: '1.1rem',
-                                                fontWeight: 600,
-                                                textTransform: 'none',
-                                                position: 'relative',
-                                                overflow: 'hidden',
-                                                '&:hover': {
-                                                    background: 'linear-gradient(135deg, #357ABD, #45B849)',
-                                                    boxShadow: '0 8px 25px rgba(74, 144, 226, 0.4)',
-                                                    transform: 'translateY(-2px)',
-                                                },
-                                                '&:active': {
-                                                    transform: 'translateY(0)',
-                                                },
-                                                transition: 'all 0.3s ease',
-                                                '&::before': {
-                                                    content: '""',
-                                                    position: 'absolute',
-                                                    top: 0,
-                                                    left: '-100%',
-                                                    width: '100%',
-                                                    height: '100%',
-                                                    background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
-                                                    transition: 'left 0.6s',
-                                                },
-                                                '&:hover::before': {
-                                                    left: '100%',
-                                                },
-                                            }}
-                                        >
-                                            {isLoading ? (
-                                                <CircularProgress size={24} color="inherit" />
-                                            ) : (
-                                                 authConfig.signUp.buttonText
-                                            )}
-                                        </Button>
+
+                                            <Box my={2}>
+                                                <FormControlLabel
+                                                    control={
+                                                        <Checkbox
+                                                            name="termeCondition"
+                                                            checked={values.termeCondition}
+                                                            onChange={handleInputChange}
+                                                            color="primary"
+                                                        />
+                                                    }
+                                                    label={
+                                                        <Typography variant="body2">
+                                                            I Aggree with{' '}
+                                                            <Link
+                                                                href="#"
+                                                                sx={{
+                                                                    color: 'primary.main',
+                                                                    textDecoration: 'none',
+                                                                    fontWeight: 600,
+                                                                    '&:hover': { textDecoration: 'underline' }
+                                                                }}
+                                                            >
+                                                                Terme Conditions
+                                                            </Link>
+                                                            {' '}and{' '}
+                                                            <Link
+                                                                href="#"
+                                                                sx={{
+                                                                    color: 'primary.main',
+                                                                    textDecoration: 'none',
+                                                                    fontWeight: 600,
+                                                                    '&:hover': { textDecoration: 'underline' }
+                                                                }}
+                                                            >
+                                                                privacy Policy
+                                                            </Link>
+                                                        </Typography>
+                                                    }
+                                                />
+                                                {errors.termeCondition && (
+                                                    <Typography variant="body2" color="error" sx={{ mt: 1, ml: 4 }}>
+                                                        {errors.termeCondition}
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                            <Button
+                                                fullWidth
+                                                variant="contained"
+                                                type='submit'
+                                                size="large"
+                                                disabled={isLoading || !values.termeCondition}
+                                                sx={{
+                                                    height: 56,
+                                                    borderRadius: 2,
+                                                    background: 'linear-gradient(135deg, #4A90E2, #50C878)',
+                                                    fontSize: '1.1rem',
+                                                    fontWeight: 600,
+                                                    textTransform: 'none',
+                                                    position: 'relative',
+                                                    overflow: 'hidden',
+                                                    '&:hover': {
+                                                        background: 'linear-gradient(135deg, #357ABD, #45B849)',
+                                                        boxShadow: '0 8px 25px rgba(74, 144, 226, 0.4)',
+                                                        transform: 'translateY(-2px)',
+                                                    },
+                                                    '&:active': {
+                                                        transform: 'translateY(0)',
+                                                    },
+                                                    transition: 'all 0.3s ease',
+                                                    '&::before': {
+                                                        content: '""',
+                                                        position: 'absolute',
+                                                        top: 0,
+                                                        left: '-100%',
+                                                        width: '100%',
+                                                        height: '100%',
+                                                        background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent)',
+                                                        transition: 'left 0.6s',
+                                                    },
+                                                    '&:hover::before': {
+                                                        left: '100%',
+                                                    },
+                                                }}
+                                            >
+                                                {isLoading ? (
+                                                    <CircularProgress size={24} color="inherit" />
+                                                ) : (
+                                                    authConfig.signUp.buttonText
+                                                )}
+                                            </Button>
+                                        </form>
                                     </Box>
 
                                     <Divider sx={{ mb: 3, mt: 4, color: theme.textSecondary }}>

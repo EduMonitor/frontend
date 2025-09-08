@@ -3,105 +3,131 @@ import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
 import Drawer from '@mui/material/Drawer';
 import Typography from '@mui/material/Typography';
-
 import { NavLink } from 'react-router-dom';
 import { lazy, Suspense, useCallback, useState } from 'react';
-import { CircularProgress } from '@mui/material';
-import { useFooterHeaders } from '../../../constant/strings/text.strings';
-import { useLogout } from '../../../utiles/config/logout.config/logout.config';
-import useCurrentUser from '../../../utiles/config/currentuser.config/current.user.config';
-import TextLoading from '../../spinners/spinners.spinners';
 import { useQuery } from '@tanstack/react-query';
-import useAxiosPrivate from '../../../utiles/config/hooks.config/axiosprivate.hooks';
+import { footerText } from '../../constants/string.constants';
+import { useLogout } from '../../utils/hooks/logout/logout.logout';
+import useAxiosPrivate from '../../utils/hooks/instance/axiosprivate.instance';
+import useCurrentUser from '../../utils/hooks/current/user.currents';
+import { sidebarMenuItems } from '../../constants/items.constants';
+import Spinner from '../spinner/spinners.spinners';
+import { AnimatedGrid, FloatingElements } from '../animations/background.animations';
+import { aiFeatures } from '../../auth/sections/aifeature.sections';
+import useAuthTheme from '../../auth/sections/themeHook.sections';
 
+// Lazy load components
+const SideBarContent = lazy(() => import('./content.sidebar'));
+const MobileNav = lazy(() => import('./mobile.sidebar'));
 
-const UsersSidebarContent = lazy(() => import('./users.content.sidebar'));
-const UsersMobileNav = lazy(() => import('./users.mobile.sidebar'));
-
-const UsersSidebar = ({ children, title }) => {
-    const copyrightText = useFooterHeaders();
+const MainSideBar = ({ children, title }) => {
     const [mobileOpen, setMobileOpen] = useState(false);
-    const theme = useTheme()
+    const theme = useTheme();
+    const themes = useAuthTheme();
     const currentYear = new Date().getFullYear();
     const logout = useLogout();
-    const { currentUser } = useCurrentUser()
+    const axiosPrivate = useAxiosPrivate();
+
+    const { currentUser, isLoading: userLoading } = useCurrentUser();
+
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
     };
-    const axiosPrivate = useAxiosPrivate()
 
     const handleLogout = () => {
         logout();
     };
+
+    // Fetch notifications
     const fetchNotifications = async () => {
         const response = await axiosPrivate.get('/api/v2/notifications');
-        const result = response?.data?.data.filter(notification => !notification.read)
+        const result = response?.data?.data.filter(notification => !notification.read);
         return result;
-    }
-    // Use React Query for fetching user data
+    };
+
     const { data: notifications, refetch } = useQuery({
-        queryKey: ['notificationsUers'],
+        queryKey: ['notificationsUsers'],
         queryFn: fetchNotifications,
-        staleTime: 5 * 60 * 1000, // ✅ Keep data fresh for 5 mi
-        retry: 3,  // ✅ Retry 3 times if API fails
-        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000), // ✅ Exponential backoff
-        refetchOnWindowFocus: false, // Disable refetching on window focus
-        refetchInterval: 60 * 1000, // Refetch every 60 seconds
-
+        staleTime: 5 * 60 * 1000,
+        retry: 3,
+        retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 30000),
+        refetchOnWindowFocus: false,
+        refetchInterval: 60 * 1000,
     });
-     const markAsRead = useCallback(async (notifId) => {
-            try {
-              const response = await axiosPrivate.put(`/api/v2/notifications/${notifId}`);
-              if (response.status === 200) {
+
+    const markAsRead = useCallback(async (notifId) => {
+        try {
+            const response = await axiosPrivate.put(`/api/v2/notifications/${notifId}`);
+            if (response.status === 200) {
                 refetch();
-              }
-            } catch (error) {
-              console.error('Failed to mark notification as read:', error);
             }
-          }, [axiosPrivate, refetch]);
-          
+        } catch (error) {
+            console.error('Failed to mark notification as read:', error);
+        }
+    }, [axiosPrivate, refetch]);
 
+    // Generate menu items based on user role
+    const menuItems = currentUser
+        ? sidebarMenuItems([currentUser?.role])
+        : [];
 
-    const drawer = (
-        <Suspense fallback={<TextLoading />}>
-            <UsersSidebarContent onClose={handleDrawerToggle} onClick={handleLogout} />
-        </Suspense>
-    );
+    // Show spinner for user data loading (separate from component loading)
+    if (userLoading) {
+        return <Spinner isLoading={userLoading} />;
+    }
+
+    // Common props for sidebar components
+    const sidebarProps = {
+        onClick: handleLogout,
+        onClose: handleDrawerToggle,
+        menuItems,
+    };
+
+    const mobileNavProps = {
+        onOpen: handleDrawerToggle,
+        title,
+        notifications,
+        markAsRead,
+        profileImage: currentUser?.profileImage,
+        name: `${currentUser?.firstName} ${currentUser?.lastName}`,
+        onLogout: handleLogout,
+        userRole: currentUser?.role,
+    };
 
     return (
-        <Box minHeight={"100vh"}>
-            {/* UsersSidebar for desktop view */}
-            <Suspense fallback={<TextLoading />}>
-                <UsersSidebarContent
-                    sx={{
-                        display: { xs: 'none', md: 'block' }
-                    }}
-                    onClick={handleLogout}
+        <Box minHeight="100vh">
+            {/* Single Suspense boundary for all sidebar components */}
+            <Suspense fallback={<Spinner isLoading={userLoading} />}>
+                {/* Desktop Sidebar */}
+                <SideBarContent
+                    sx={{ display: { xs: 'none', md: 'block' } }}
+                    {...sidebarProps}
+                />
+
+                {/* Mobile Drawer */}
+                <Drawer
+                    anchor="left"
+                    open={mobileOpen}
                     onClose={handleDrawerToggle}
-                />
+                    ModalProps={{ keepMounted: true }}
+                    sx={{
+                        display: { xs: 'block', md: 'none' },
+                        '& .MuiDrawer-paper': { 
+                            boxSizing: 'border-box', 
+                            width: 250,
+                            backgroundColor: theme.palette.sidebar || theme.palette.background.paper,
+                            backgroundImage: 'none',
+                        },
+                    }}
+                >
+                    <SideBarContent {...sidebarProps} />
+                </Drawer>
+
+                {/* Mobile Navigation */}
+                <MobileNav {...mobileNavProps} />
             </Suspense>
-            <Drawer
-                anchor="left"
-                open={mobileOpen}
-                onClose={handleDrawerToggle}
-                ModalProps={{ keepMounted: true }}
-                sx={{
-                    display: { xs: 'block', md: 'none' },
-                    '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 250 },
-                }}
-            >
-                {drawer}
-            </Drawer>
-            <Suspense fallback={<CircularProgress />}>
-                <UsersMobileNav onOpen={handleDrawerToggle}
-                    title={title}
-                    notifications={notifications}
-                    markAsRead={markAsRead}
-                    profileImage={currentUser?.profileImage}
-                    name={`${currentUser?.firstName} ${currentUser?.lastName}`}
-                    onLogout={handleLogout}
-                />
-            </Suspense>
+
+            {/* Main Content Area */}
             <Box sx={{
                 ml: { sm: "0", md: "250px" },
                 p: { md: 4, sm: 0, xs: 0 },
@@ -111,51 +137,63 @@ const UsersSidebar = ({ children, title }) => {
                 overflow: "hidden",
                 overflowY: "auto",
                 position: 'relative',
-                backgroundImage: `
-            radial-gradient(ellipse 80% 50% at 50% -20%, hsl(211, 42.90%, 12.40%), transparent),
-            radial-gradient(ellipse 80% 50% at 50% 120%, hsl(210, 43.80%, 12.50%), transparent)
-          `, backgroundRepeat: 'no-repeat',
+                background: themes.background || theme.palette.background.default,
+                backgroundRepeat: 'no-repeat',
                 backgroundSize: 'cover',
-            }}
-            >
+                color: theme.palette.text.primary,
+            }}>
+                {/* Background Components */}
+                <FloatingElements aiFeatures={aiFeatures} />
+                <AnimatedGrid />
                 {children}
 
+                {/* Footer */}
                 <Box
                     position="fixed"
                     display="flex"
                     sx={{
-                        bottom: "0", left: "0",
-                        width: { sm: "100vw", md: "calc(100% - 250px)", xs: "100vw", },
+                        bottom: "0",
+                        left: "0",
+                        width: { sm: "100vw", md: "calc(100% - 250px)", xs: "100vw" },
                         ml: { sm: "0", md: "250px" },
                         p: 2,
                         justifyContent: "center",
-                        bgcolor: theme.palette.primary.main,
-                        borderTopWidth: "1px",
-                        borderTopColor: theme.palette.primary.main,
+                        bgcolor: theme.palette.background.paper,
+                        borderTop: `1px solid ${theme.palette.divider}`,
                         zIndex: "1000",
-
-                        backgroundColor: theme.palette.grey[800],
-                        boxShadow: '0px -4px 8px rgba(0, 0, 0, 0.2)',
-                     backdropFilter: 'blur(8px)', // Blur effect
+                        boxShadow: theme.shadows[4],
+                        backdropFilter: 'blur(8px)',
                         mt: "40"
                     }}
                 >
-                    <Typography variant="body2">
-                        &copy; {currentYear} {copyrightText.copyright}{' '}
-                        <NavLink to="https://self-sec.com" target="_blank" style={{ color: 'red' }}>
-                            self-sec
+                    <Typography 
+                        variant="body2"
+                        sx={{
+                            color: theme.palette.text.secondary,
+                            '& a': {
+                                color: theme.palette.error.main,
+                                textDecoration: 'none',
+                                '&:hover': {
+                                    textDecoration: 'underline',
+                                    color: theme.palette.error.dark,
+                                }
+                            }
+                        }}
+                    >
+                        &copy; {currentYear} {footerText.copyRigth}{' '}
+                        <NavLink to={footerText.link} target="_blank">
+                            {footerText.developedBy}
                         </NavLink>
                     </Typography>
                 </Box>
             </Box>
-
         </Box>
     );
 };
 
-UsersSidebar.propTypes = {
+MainSideBar.propTypes = {
     children: PropTypes.node,
     title: PropTypes.string,
 };
 
-export default UsersSidebar;
+export default MainSideBar;

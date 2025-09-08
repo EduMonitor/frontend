@@ -2,14 +2,15 @@ import { Navigate, useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { useEffect, useState } from 'react';
 import useAuth from '../contexts/useAth.contexts';
-import useRefreshToken from '../instance/refreshtoken.instance';
 import { AuthRoutes, PagesRoutes } from '../../../constants/routes.constant';
+import Spinner from '../../../components/spinner/spinners.spinners';
+import useRefreshToken from '../instance/refreshtoken.instance';
 
 
 const PrivateRoute = ({ element, allowedRoles }) => {
   const { auth } = useAuth();
   // Redirect to Sign In if not authenticated
-  const refresh = useRefreshToken();
+  const {refresh} = useRefreshToken();
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();  // Capture the current location
 
@@ -30,7 +31,7 @@ const PrivateRoute = ({ element, allowedRoles }) => {
   ;
 
   if (isLoading) {
-    return <TextLoading />;
+    return <Spinner isLoading={true} />;
   }
 
   if (!auth.accessToken) {

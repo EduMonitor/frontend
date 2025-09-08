@@ -9,16 +9,12 @@ import Button from '@mui/material/Button';
 import Collapse from "@mui/material/Collapse";
 import { styled } from "@mui/system";
 import { FiChevronDown, FiChevronUp, FiX } from "react-icons/fi";
-import { useLoginText } from "../../../constant/strings/text.strings";
-import { UsersMenuItems } from "../../../constant/items/users.items";
+import { useTheme } from '@mui/material/styles';
 
-
-const ContentSidebar = ({ onClose, onClick, ...rest }) => {
+const ContentSidebar = ({ onClose, menuItems, onClick, ...rest }) => {
     const [openChildrenIndex, setOpenChildrenIndex] = useState(null);
     const location = useLocation();
-    const loginText = useLoginText()
-
-    const items = UsersMenuItems();
+    const theme = useTheme(); // Use MUI's useTheme hook instead of custom hook
 
     const isActive = useCallback((link) => {
         if (link.path === location.pathname) return true;
@@ -32,29 +28,54 @@ const ContentSidebar = ({ onClose, onClick, ...rest }) => {
         setOpenChildrenIndex((prevIndex) => (prevIndex === index ? null : index));
     }, []);
 
-
     return (
         <StyledSidebar {...rest}>
-            <Box sx={{ backgroundColor: "white",boxShadow:6 }} display="flex" alignItems="center" p={2} justifyContent="space-between">
+            <Box 
+                sx={{
+                    boxShadow: 6,
+                    borderBottom: `1px solid ${theme.palette.divider}`
+                }} 
+                display="flex" 
+                alignItems="center" 
+                p={2} 
+                justifyContent="space-between"
+            >
                 {/* Center logo and title */}
                 <Box display="flex" alignItems="center" flexDirection="column" flex="1" textAlign="center">
-                    <img src='/images/logo/logo.png' alt="logo" height={90} width={100} />
+                    <img src="/logo.png" alt="logo" height={90} width={"100%"} />
                 </Box>
                 {/* Close icon for smaller screens */}
-                <IconButton color="primary" sx={{ position: "absolute", display: { xs: 'block', md: 'none', top: 8, right: 8 } }} onClick={onClose}>
+                <IconButton 
+                    sx={{ 
+                        position: "absolute", 
+                        display: { xs: 'block', md: 'none' }, 
+                        top: 8, 
+                        right: 8,
+                        color: theme.palette.text.primary
+                    }} 
+                    onClick={onClose}
+                >
                     <FiX />
                 </IconButton>
             </Box>
-            <Divider   sx={{ bgcolor: "primary.main", mb: 2 }} />
+            <Divider sx={{ bgcolor: theme.palette.primary.main, mb: 2 }} />
 
             <Box sx={{ paddingBottom: "80px" }}>
-                {items && items.map((link, index) => {
-                    if (!link) return null; // Add this check
+                {menuItems && menuItems?.map((link, index) => {
+                    if (!link) return null;
                     const active = isActive(link);
                     const isOpen = openChildrenIndex === index;
 
                     return (
-                        <Box key={index} mb={1} sx={{ bgcolor: active ? 'primary.main' : 'inherit', borderRadius: 1 }}>
+                        <Box 
+                            key={index} 
+                            mb={1} 
+                            sx={{ 
+                                bgcolor: active ? theme.palette.primary.main : 'transparent', 
+                                borderRadius: 1,
+                                mx: 1
+                            }}
+                        >
                             {link?.children ? (
                                 <Box
                                     onClick={() => toggleChildren(index)}
@@ -64,22 +85,30 @@ const ContentSidebar = ({ onClose, onClick, ...rest }) => {
                                         justifyContent: 'space-between',
                                         p: 1.5,
                                         cursor: 'pointer',
-                                        "&:hover": { bgcolor: 'primary.main', color: 'white' }
+                                        borderRadius: 1,
+                                        "&:hover": { 
+                                            bgcolor: theme.palette.action.hover,
+                                        }
                                     }}
                                 >
-                                    <Box display="flex" gap={2}>
+                                    <Box display="flex" gap={2} alignItems="center">
                                         {link?.icon && (
                                             <link.icon
-                                                mr="4"
-                                                color="white"
-                                                fontSize="20"
+                                                size={20}
+                                                color={active ? theme.palette.primary.contrastText : theme.palette.text.primary}
                                             />
                                         )}
-                                        <Typography color="common.white" variant="body2">
+                                        <Typography 
+                                            color={active ? theme.palette.primary.contrastText : theme.palette.text.primary} 
+                                            variant="body2"
+                                            sx={{ fontWeight: active ? 600 : 400 }}
+                                        >
                                             {link?.name}
                                         </Typography>
                                     </Box>
-                                    {isOpen ? <FiChevronUp /> : <FiChevronDown />}
+                                    <Box sx={{ color: active ? theme.palette.primary.contrastText : theme.palette.text.secondary }}>
+                                        {isOpen ? <FiChevronUp size={16} /> : <FiChevronDown size={16} />}
+                                    </Box>
                                 </Box>
                             ) : (
                                 <NavLink to={link.path} onClick={onClose} style={{ textDecoration: 'none' }}>
@@ -89,17 +118,23 @@ const ContentSidebar = ({ onClose, onClick, ...rest }) => {
                                             alignItems: 'center',
                                             gap: 2,
                                             p: 1.5,
-                                            "&:hover": { bgcolor: 'primary.main', color: 'white' }
+                                            borderRadius: 1,
+                                            "&:hover": { 
+                                                bgcolor: theme.palette.action.hover,
+                                            }
                                         }}
                                     >
                                         {link.icon && (
                                             <link.icon
-                                                mr="4"
-                                                color="white"
-                                                fontSize="20"
+                                                size={20}
+                                                color={active ? theme.palette.primary.contrastText : theme.palette.text.primary}
                                             />
                                         )}
-                                        <Typography color="common.white" variant="body2">
+                                        <Typography 
+                                            color={active ? theme.palette.primary.contrastText : theme.palette.text.primary} 
+                                            variant="body2"
+                                            sx={{ fontWeight: active ? 600 : 400 }}
+                                        >
                                             {link.name}
                                         </Typography>
                                     </Box>
@@ -108,49 +143,67 @@ const ContentSidebar = ({ onClose, onClick, ...rest }) => {
 
                             <Collapse in={isOpen} timeout="auto" unmountOnExit>
                                 <Box pl={3} mb={1}>
-                                    {link.children && link.children.map((subItem, ind) => (
-                                        <NavLink key={ind} to={subItem.path} onClick={onClose} style={{ textDecoration: 'none' }}>
-                                            <Box
-                                                sx={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    p: 1,
-                                                    gap: 2,
-                                                    "&:hover": { bgcolor: 'primary.main', color: 'white' },
-                                                    bgcolor: isActive(subItem) ? 'primary.light' : 'inherit',
-                                                    borderRadius: 1
-                                                }}
-                                            >
-                                                {subItem.icon && (
-                                                    <subItem.icon
-                                                        mr="4"
-                                                        color="white"
-                                                        fontSize="20"
-                                                    />
-                                                )}
-                                                <Typography color="common.white" variant="body2">
-                                                    {subItem.name}
-                                                </Typography>
-                                            </Box>
-                                        </NavLink>
-                                    ))}
+                                    {link.children && link.children.map((subItem, ind) => {
+                                        const subActive = isActive(subItem);
+                                        return (
+                                            <NavLink key={ind} to={subItem.path} onClick={onClose} style={{ textDecoration: 'none' }}>
+                                                <Box
+                                                    sx={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        p: 1,
+                                                        gap: 2,
+                                                        borderRadius: 1,
+                                                        "&:hover": { 
+                                                            bgcolor: theme.palette.action.hover,
+                                                        },
+                                                        bgcolor: subActive ? theme.palette.primary.light : 'transparent',
+                                                    }}
+                                                >
+                                                    {subItem.icon && (
+                                                        <subItem.icon
+                                                            size={16}
+                                                            color={subActive ? theme.palette.primary.contrastText : theme.palette.text.secondary}
+                                                        />
+                                                    )}
+                                                    <Typography 
+                                                        color={subActive ? theme.palette.primary.contrastText : theme.palette.text.secondary} 
+                                                        variant="body2"
+                                                        sx={{ 
+                                                            fontSize: '0.8rem',
+                                                            fontWeight: subActive ? 500 : 400
+                                                        }}
+                                                    >
+                                                        {subItem.name}
+                                                    </Typography>
+                                                </Box>
+                                            </NavLink>
+                                        );
+                                    })}
                                 </Box>
                             </Collapse>
                         </Box>
                     );
                 })}
-
             </Box>
 
             <FixedButtonContainer>
-                <Button variant="contained" color="primary" onClick={onClick} fullWidth>
-                    {loginText.Logout}
+                <Button 
+                    variant="contained" 
+                    color="primary" 
+                    onClick={onClick} 
+                    fullWidth
+                    sx={{
+                        fontWeight: 600,
+                        py: 1.5
+                    }}
+                >
+                    Déconnecter
                 </Button>
             </FixedButtonContainer>
         </StyledSidebar>
     );
 };
-
 
 const StyledSidebar = styled(Box)(({ theme }) => ({
     position: 'fixed',
@@ -158,28 +211,35 @@ const StyledSidebar = styled(Box)(({ theme }) => ({
     top: 0,
     bottom: 0,
     width: '250px',
-    borderRight:"3px solid red",
-    backgroundColor: theme.palette.sidebar,
-    color: theme.palette.common.white,
+    backgroundColor: theme.palette.sidebar || theme.palette.background.paper,
+    color: theme.palette.text.primary,
     overflowY: 'auto',
     zIndex: 100,
+    borderRight: `1px solid ${theme.palette.divider}`,
+    // Add shadow based on theme mode
+    boxShadow: theme.palette.mode === 'dark' 
+        ? '2px 0 8px rgba(0, 0, 0, 0.3)' 
+        : '2px 0 8px rgba(0, 0, 0, 0.1)',
 }));
 
-// Style for the fixed button at the bottom of the sidebar
 const FixedButtonContainer = styled(Box)(({ theme }) => ({
     position: 'fixed',
     bottom: 0,
     left: 0,
     width: '250px',
     padding: theme.spacing(2),
-    backgroundColor: theme.palette.grey[800],
-    boxShadow: '0px -4px 8px rgba(0, 0, 0, 0.2)',
+    backgroundColor: theme.palette.background.paper,
+    borderTop: `1px solid ${theme.palette.divider}`,
+    boxShadow: theme.palette.mode === 'dark'
+        ? '0px -4px 8px rgba(0, 0, 0, 0.3)'
+        : '0px -4px 8px rgba(0, 0, 0, 0.1)',
     zIndex: 1000,
 }));
 
 ContentSidebar.propTypes = {
     onClose: PropTypes.func,
     onClick: PropTypes.func,
+    menuItems: PropTypes.array,
 };
 
 export default ContentSidebar;

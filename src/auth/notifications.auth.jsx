@@ -1,25 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import  { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-    Box,
-    Typography,
-    Button,
-    CircularProgress,
-    Fade,
-    Grow,
-    Slide,
-    Alert,
-    Chip,
-    IconButton
-} from '@mui/material';
+import Box from "@mui/material/Box"
+import Button from "@mui/material/Button"
+import Typography from "@mui/material/Typography"
+import Chip from "@mui/material/Chip"
+import Fade from "@mui/material/Fade"
+import Slide from "@mui/material/Slide"
+import IconButton from "@mui/material/IconButton"
+import CircularProgress from "@mui/material/CircularProgress"
+import Alert from "@mui/material/Alert"
+
 import {
     MdEmail,
     MdRefresh,
-    MdCheckCircle,
     MdArrowBack,
     MdError,
-    MdLock,
     MdVerifiedUser,
     MdClose
 } from 'react-icons/md';
@@ -33,13 +29,8 @@ import { axiosPrivate } from '../utils/hooks/instance/axios.instance';
 import { fetchCsrfToken } from '../utils/hooks/token/csrf.token';
 
 // ============================
-// CONSTANTS & TYPES
+// CONSTANTS
 // ============================
-const EMAIL_TYPES = {
-    VERIFICATION: 'verification',
-    RESET: 'reset'
-};
-
 const ERROR_CODES = {
     BAD_REQUEST: 400,
     UNAUTHORIZED: 401,
@@ -65,16 +56,16 @@ const createApiCall = async (url, options = {}) => {
         });
         return response.data;
     } catch (error) {
-        const errorMessage = error.response?.data?.error || 
-                           error.response?.data?.message || 
-                           'Request failed';
+        const errorMessage = error.response?.data?.error ||
+            error.response?.data?.message ||
+            'Request failed';
         throw new Error(errorMessage);
     }
 };
 
 const handleApiError = (error) => {
     if (!error.response) {
-        return error.request 
+        return error.request
             ? 'Network error. Please check your connection and try again.'
             : error.message || 'An unexpected error occurred. Please try again.';
     }
@@ -105,15 +96,7 @@ const handleApiError = (error) => {
 // ============================
 const apiService = {
     checkSession: (uuid) => createApiCall(`/api/v2/session/${uuid}`, { method: 'get' }),
-    
-    getTokenInfo: (token) => createApiCall(`/api/v2/token-info/${token}`, { method: 'get' }),
-    
-    verifyEmail: (token) => createApiCall(`/api/v2/verify/${token}`, { method: 'get' }),
-    
-    checkVerificationStatus: (identifier) => 
-        createApiCall(`/api/v2/check-session/${identifier}`, { method: 'get' })
-        .catch(() => null), // Silent fail for status checks
-    
+
     resendEmail: async (uuid, type = null) => {
         try {
             const url = type ? `/api/v2/resend/${uuid}?type=${type}` : `/api/v2/resend/${uuid}`;
@@ -125,68 +108,8 @@ const apiService = {
 };
 
 // ============================
-// CONFIGURATION OBJECTS
+// CONFIGURATION
 // ============================
-const getEmailTypeConfig = (emailType) => {
-    const configs = {
-        [EMAIL_TYPES.VERIFICATION]: {
-            title: 'Verify Your Email',
-            icon: <MdVerifiedUser size={48} color="white" />,
-            description: 'Click the verification link in your email to activate your account.',
-            actionText: 'Resend Verification Email',
-            gradient: 'linear-gradient(45deg, #6366f1, #8b5cf6)',
-            chipColor: 'primary',
-            chipLabel: 'Account Verification'
-        },
-        [EMAIL_TYPES.RESET]: {
-            title: 'Reset Your Password',
-            icon: <MdLock size={48} color="white" />,
-            description: 'Click the reset link in your email to set a new password.',
-            actionText: 'Resend Reset Email',
-            gradient: 'linear-gradient(45deg, #f59e0b, #f97316)',
-            chipColor: 'warning',
-            chipLabel: 'Password Reset'
-        }
-    };
-
-    return configs[emailType] || {
-        title: 'Check Your Email',
-        icon: <MdEmail size={48} color="white" />,
-        description: 'We\'ve sent you an email with further instructions.',
-        actionText: 'Resend Email',
-        gradient: 'linear-gradient(45deg, #6366f1, #8b5cf6)',
-        chipColor: 'primary',
-        chipLabel: 'Email Verification'
-    };
-};
-
-const getSuccessConfig = (emailType) => {
-    if (emailType === EMAIL_TYPES.RESET) {
-        return {
-            title: 'Reset Link Confirmed! 🔑',
-            description: 'Great! You can now set a new password for your account.',
-            buttonText: 'Set New Password',
-            action: 'reset',
-            gradient: 'linear-gradient(45deg, #f59e0b, #f97316)'
-        };
-    }
-
-    return {
-        title: 'Email Verified! 🎉',
-        description: 'Awesome! Your email has been successfully verified. You can now access all features of your account.',
-        buttonText: 'Continue to Dashboard',
-        action: 'dashboard',
-        gradient: 'linear-gradient(45deg, #6366f1, #8b5cf6)'
-    };
-};
-
-const getErrorConfig = (emailType) => ({
-    title: emailType === EMAIL_TYPES.RESET ? 'Reset Link Invalid' : 'Verification Failed',
-    description: emailType === EMAIL_TYPES.RESET 
-        ? 'The reset link may have expired or is invalid. Please request a new one.'
-        : 'The verification link may have expired or is invalid. Please try again.'
-});
-
 const getSessionErrorConfig = (status) => {
     const configs = {
         [ERROR_CODES.SESSION_EXPIRED]: {
@@ -208,25 +131,18 @@ const getSessionErrorConfig = (status) => {
 // ============================
 // MAIN COMPONENT
 // ============================
-const EmailVerifyPage = () => {
-    const { uuid, token } = useParams();
+const EmailNotificationPage = () => {
+    const { uuid } = useParams();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const theme = useAuthTheme();
     const { currentTheme } = useThemeMode();
     const { palette } = currentTheme;
 
-    // Derived state
-    const isSessionMode = !!uuid && !token;
-    const isTokenMode = !!token && !uuid;
-    const identifier = uuid || token;
-
     // Local state
     const [countdown, setCountdown] = useState(0);
-    const [isVerified, setIsVerified] = useState(false);
     const [verificationError, setVerificationError] = useState(null);
-    const [emailType, setEmailType] = useState(null);
-    const [tokenData, setTokenData] = useState(null);
+    const [sessionData, setSessionData] = useState(null);
 
     // ============================
     // QUERIES
@@ -234,34 +150,18 @@ const EmailVerifyPage = () => {
     const sessionQuery = useQuery({
         queryKey: ['session', uuid],
         queryFn: () => apiService.checkSession(uuid),
-        enabled: isSessionMode,
-        refetchInterval: (data) => data?.status === 'verified' ? false : 30000,
+        enabled: !!uuid,
+        refetchInterval: (data) => {
+            // Stop refetching if verified or if there's an error
+            if (data?.status === 'verified' || data?.error) return false;
+            return 30000; // 30 seconds
+        },
         retry: (failureCount, error) => {
             if (error.response?.status >= 400 && error.response?.status < 500) {
                 return false;
             }
             return failureCount < 3;
         }
-    });
-
-    const tokenQuery = useQuery({
-        queryKey: ['tokenInfo', token],
-        queryFn: () => apiService.getTokenInfo(token),
-        enabled: isTokenMode,
-        retry: (failureCount, error) => {
-            if (error.response?.status >= 400 && error.response?.status < 500) {
-                return false;
-            }
-            return failureCount < 3;
-        }
-    });
-
-    const statusQuery = useQuery({
-        queryKey: ['verificationStatus', identifier],
-        queryFn: () => apiService.checkVerificationStatus(identifier),
-        enabled: !!identifier,
-        refetchInterval: 10000,
-        retry: false
     });
 
     // ============================
@@ -269,32 +169,13 @@ const EmailVerifyPage = () => {
     // ============================
     const resendMutation = useMutation({
         mutationFn: ({ type }) => apiService.resendEmail(uuid, type),
-        onSuccess: (data) => {
+        onSuccess: () => {
             setCountdown(60);
-            setEmailType(data.emailType);
             setVerificationError(null);
             queryClient.invalidateQueries(['session', uuid]);
-            queryClient.invalidateQueries(['tokenInfo', token]);
-            queryClient.invalidateQueries(['verificationStatus', identifier]);
         },
         onError: (error) => {
             console.error('Resend failed:', error);
-            setVerificationError(error.message);
-        }
-    });
-
-    const verifyMutation = useMutation({
-        mutationFn: () => apiService.verifyEmail(token),
-        onSuccess: (data) => {
-            if (data.status === 'success') {
-                setIsVerified(true);
-                setVerificationError(null);
-                queryClient.invalidateQueries(['session', uuid]);
-                queryClient.invalidateQueries(['tokenInfo', token]);
-                queryClient.invalidateQueries(['verificationStatus', identifier]);
-            }
-        },
-        onError: (error) => {
             setVerificationError(error.message);
         }
     });
@@ -310,35 +191,27 @@ const EmailVerifyPage = () => {
     }, [countdown]);
 
     useEffect(() => {
-        if (token && !isVerified && !verificationError && !verifyMutation.isSuccess) {
-            verifyMutation.mutate();
+        if (sessionQuery.data) {
+            const data = sessionQuery.data;
+
+            // If already verified, redirect to home
+            if (data.status === 'verified') {
+                navigate('/');
+                return;
+            }
+
+            setSessionData({
+                email: data.email,
+                sessionType: data.sessionType,
+                tokenExpires: data.tokenExpires,
+                cooldown: data.cooldown || 0
+            });
+
+            if (data.cooldown) {
+                setCountdown(Math.ceil(data.cooldown));
+            }
         }
-    }, [token, isVerified, verificationError, verifyMutation.isSuccess, verifyMutation]);
-
-    useEffect(() => {
-        const data = sessionQuery.data || tokenQuery.data;
-        if (!data) return;
-
-        const sessionType = data.sessionType || data.tokenType;
-        setEmailType(sessionType);
-        
-        if (data.cooldown) {
-            setCountdown(Math.ceil(data.cooldown));
-        }
-
-        setTokenData({
-            email: data.email,
-            sessionType,
-            tokenExpires: data.tokenExpires,
-            cooldown: data.cooldown || 0
-        });
-    }, [sessionQuery.data, tokenQuery.data]);
-
-    useEffect(() => {
-        if (statusQuery.data?.isVerified && !isVerified) {
-            setIsVerified(true);
-        }
-    }, [statusQuery.data, isVerified]);
+    }, [sessionQuery.data, navigate]);
 
     // ============================
     // HANDLERS
@@ -347,26 +220,14 @@ const EmailVerifyPage = () => {
         resendEmail: () => {
             if (countdown === 0 && !resendMutation.isPending) {
                 setVerificationError(null);
-                const currentEmailType = emailType || sessionQuery.data?.sessionType;
-                resendMutation.mutate({ type: currentEmailType });
+                const emailType = sessionData?.sessionType || 'verification';
+                resendMutation.mutate({ type: emailType });
             }
         },
         backToLogin: () => navigate('/'),
-        continueToDashboard: () => navigate('/dashboard'),
-        goToPasswordReset: () => navigate(`/auth/reset-password/${token}`),
         clearError: () => {
             setVerificationError(null);
             resendMutation.reset();
-        },
-        getSuccessAction: (action) => {
-            switch (action) {
-                case 'reset':
-                    return handlers.goToPasswordReset;
-                case 'dashboard':
-                    return handlers.continueToDashboard;
-                default:
-                    return handlers.continueToDashboard;
-            }
         }
     };
 
@@ -390,7 +251,7 @@ const EmailVerifyPage = () => {
 
     const renderErrorScreen = (error) => {
         const errorConfig = getSessionErrorConfig(error?.response?.status);
-        
+
         return (
             <Box
                 sx={{
@@ -443,144 +304,22 @@ const EmailVerifyPage = () => {
         );
     };
 
-    const renderSuccessScreen = (config) => (
-        <Box
-            sx={{
-                minHeight: '100vh',
-                background: theme.background,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                p: 2,
-            }}
-        >
-            <FloatingElements aiFeatures={aiFeatures} />
-            <AnimatedGrid />
-            <Grow in={true} timeout={800}>
-                <CardBox>
-                    <Box sx={{ maxWidth: 480, textAlign: "center" }}>
-                        <Box sx={{ mb: 3 }}>
-                            <MdCheckCircle
-                                size={80}
-                                color={palette.success.main}
-                                style={{
-                                    filter: 'drop-shadow(0 4px 12px rgba(16, 185, 129, 0.3))',
-                                }}
-                            />
-                        </Box>
-                        <Typography variant="h4" gutterBottom sx={{ mb: 2 }}>
-                            {config.title}
-                        </Typography>
-                        <Typography variant="body1" sx={{ mb: 4, fontSize: '1.1rem' }}>
-                            {config.description}
-                        </Typography>
-                        <Button
-                            variant="contained"
-                            size="large"
-                            onClick={handlers.getSuccessAction(config.action)}
-                            sx={{
-                                py: 1.5,
-                                px: 4,
-                                borderRadius: 3,
-                                textTransform: 'none',
-                                fontSize: '1.1rem',
-                                fontWeight: 600,
-                                background: config.gradient,
-                                boxShadow: '0 8px 25px rgba(99, 102, 241, 0.3)',
-                                '&:hover': {
-                                    background: config.gradient,
-                                    transform: 'translateY(-2px)',
-                                    boxShadow: '0 12px 35px rgba(99, 102, 241, 0.4)',
-                                },
-                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                            }}
-                        >
-                            {config.buttonText}
-                        </Button>
-                    </Box>
-                </CardBox>
-            </Grow>
-        </Box>
-    );
-
-    const renderVerificationErrorScreen = () => {
-        const errorConfig = getErrorConfig(emailType);
-        
-        return (
-            <Box
-                sx={{
-                    minHeight: '100vh',
-                    background: theme.background,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    p: 2,
-                }}
-            >
-                <FloatingElements aiFeatures={aiFeatures} />
-                <AnimatedGrid />
-                <CardBox>
-                    <Box sx={{ maxWidth: 480, textAlign: "center" }}>
-                        <Box sx={{ mb: 3 }}>
-                            <MdError
-                                size={80}
-                                color={palette.error.main}
-                                style={{
-                                    filter: 'drop-shadow(0 4px 12px rgba(239, 68, 68, 0.3))',
-                                }}
-                            />
-                        </Box>
-                        <Typography variant="h4" gutterBottom sx={{ mb: 2 }}>
-                            {errorConfig.title}
-                        </Typography>
-                        <Alert severity="error" sx={{ mb: 3, textAlign: 'left' }}>
-                            {verificationError}
-                        </Alert>
-                        <Typography variant="body1" sx={{ mb: 4, fontSize: '1.1rem' }}>
-                            {errorConfig.description}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 2, justifyContent: 'center', flexWrap: 'wrap' }}>
-                            <Button
-                                variant="contained"
-                                size="large"
-                                onClick={() => navigate(`/auth/notification/${uuid}`)}
-                                sx={{
-                                    py: 1.5,
-                                    px: 4,
-                                    borderRadius: 3,
-                                    textTransform: 'none',
-                                    fontSize: '1.1rem',
-                                    fontWeight: 600,
-                                }}
-                            >
-                                Request New Link
-                            </Button>
-                            <Button
-                                variant="outlined"
-                                size="large"
-                                onClick={handlers.backToLogin}
-                                startIcon={<MdArrowBack />}
-                                sx={{
-                                    py: 1.5,
-                                    px: 4,
-                                    borderRadius: 3,
-                                    textTransform: 'none',
-                                    fontSize: '1.1rem',
-                                    fontWeight: 600,
-                                }}
-                            >
-                                Back to Login
-                            </Button>
-                        </Box>
-                    </Box>
-                </CardBox>
-            </Box>
-        );
-    };
-
     const renderMainScreen = () => {
-        const emailTypeConfig = getEmailTypeConfig(emailType);
-        const displayEmail = tokenData?.email || 'your email';
+        const displayEmail = sessionData?.email || 'your email';
+        const emailType = sessionData?.sessionType || 'verification';
+        const isReset = emailType === 'reset';
+
+        const config = {
+            title: isReset ? 'Check Your Email for Reset Link' : 'Check Your Email for Verification',
+            icon: isReset ? <MdEmail size={48} color="white" /> : <MdVerifiedUser size={48} color="white" />,
+            description: isReset
+                ? 'Click the reset link in your email to set a new password.'
+                : 'Click the verification link in your email to activate your account.',
+            actionText: isReset ? 'Resend Reset Email' : 'Resend Verification Email',
+            gradient: isReset ? 'linear-gradient(45deg, #f59e0b, #f97316)' : 'linear-gradient(45deg, #6366f1, #8b5cf6)',
+            chipColor: isReset ? 'warning' : 'primary',
+            chipLabel: isReset ? 'Password Reset' : 'Account Verification'
+        };
 
         return (
             <Box
@@ -623,16 +362,14 @@ const EmailVerifyPage = () => {
                             </Box>
 
                             {/* Email Type Indicator */}
-                            {emailType && (
-                                <Box sx={{ mb: 2 }}>
-                                    <Chip
-                                        label={emailTypeConfig.chipLabel}
-                                        color={emailTypeConfig.chipColor}
-                                        variant="outlined"
-                                        size="small"
-                                    />
-                                </Box>
-                            )}
+                            <Box sx={{ mb: 2 }}>
+                                <Chip
+                                    label={config.chipLabel}
+                                    color={config.chipColor}
+                                    variant="outlined"
+                                    size="small"
+                                />
+                            </Box>
 
                             {/* Icon Section */}
                             <Slide direction="down" in={true} timeout={800}>
@@ -642,7 +379,7 @@ const EmailVerifyPage = () => {
                                             width: 100,
                                             height: 100,
                                             borderRadius: '50%',
-                                            background: emailTypeConfig.gradient,
+                                            background: config.gradient,
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -663,7 +400,7 @@ const EmailVerifyPage = () => {
                                             },
                                         }}
                                     >
-                                        {emailTypeConfig.icon}
+                                        {config.icon}
                                     </Box>
                                 </Box>
                             </Slide>
@@ -672,17 +409,17 @@ const EmailVerifyPage = () => {
                             <Slide direction="up" in={true} timeout={1000}>
                                 <Box>
                                     <Typography variant="h4" gutterBottom>
-                                        {emailTypeConfig.title} ✨
+                                        {config.title} ✨
                                     </Typography>
 
                                     <Typography variant="body1" sx={{ mb: 1, fontSize: '1.1rem' }}>
-                                        {`We've sent an email to`}
+                                        We've sent an email to
                                     </Typography>
 
                                     <Typography
                                         variant="h6"
                                         sx={{
-                                            color: emailType === EMAIL_TYPES.RESET ? palette.warning.main : palette.primary.main,
+                                            color: isReset ? palette.warning.main : palette.primary.main,
                                             mb: 3,
                                             fontWeight: 600,
                                             wordBreak: 'break-word',
@@ -692,10 +429,10 @@ const EmailVerifyPage = () => {
                                     </Typography>
 
                                     <Typography variant="body1" sx={{ mb: 4, lineHeight: 1.7 }}>
-                                        {emailTypeConfig.description}
-                                        {tokenData?.tokenExpires && (
+                                        {config.description}
+                                        {sessionData?.tokenExpires && (
                                             <span style={{ display: 'block', marginTop: 8, fontSize: '0.9em', opacity: 0.8 }}>
-                                                Link expires: {new Date(tokenData.tokenExpires).toLocaleString()}
+                                                Link expires: {new Date(sessionData.tokenExpires).toLocaleString()}
                                             </span>
                                         )}
                                     </Typography>
@@ -742,11 +479,11 @@ const EmailVerifyPage = () => {
                                                 fontSize: '1rem',
                                                 fontWeight: 600,
                                                 mb: 2,
-                                                background: countdown > 0 || resendMutation.isPending ? '#e2e8f0' : emailTypeConfig.gradient,
+                                                background: countdown > 0 || resendMutation.isPending ? '#e2e8f0' : config.gradient,
                                                 color: countdown > 0 || resendMutation.isPending ? '#64748b' : 'white',
                                                 boxShadow: countdown > 0 || resendMutation.isPending ? 'none' : '0 8px 25px rgba(99, 102, 241, 0.3)',
                                                 '&:hover': {
-                                                    background: countdown > 0 || resendMutation.isPending ? '#e2e8f0' : emailTypeConfig.gradient,
+                                                    background: countdown > 0 || resendMutation.isPending ? '#e2e8f0' : config.gradient,
                                                     transform: countdown > 0 || resendMutation.isPending ? 'none' : 'translateY(-2px)',
                                                     boxShadow: countdown > 0 || resendMutation.isPending ? 'none' : '0 12px 35px rgba(99, 102, 241, 0.4)',
                                                 },
@@ -761,7 +498,7 @@ const EmailVerifyPage = () => {
                                                 ? `Resend in ${countdown}s`
                                                 : resendMutation.isPending
                                                     ? 'Sending...'
-                                                    : emailTypeConfig.actionText
+                                                    : config.actionText
                                             }
                                         </Button>
 
@@ -777,9 +514,6 @@ const EmailVerifyPage = () => {
                                                     }}
                                                 >
                                                     ✓ Email sent successfully!
-                                                    {resendMutation.data?.emailType && (
-                                                        <span> ({resendMutation.data.emailType})</span>
-                                                    )}
                                                 </Typography>
                                             </Fade>
                                         )}
@@ -794,7 +528,7 @@ const EmailVerifyPage = () => {
                                             textTransform: 'none',
                                             fontWeight: 500,
                                             '&:hover': {
-                                                color: emailType === EMAIL_TYPES.RESET ? '#f59e0b' : '#6366f1',
+                                                color: isReset ? '#f59e0b' : '#6366f1',
                                             },
                                         }}
                                     >
@@ -812,42 +546,18 @@ const EmailVerifyPage = () => {
     // ============================
     // RENDER LOGIC
     // ============================
-    // Loading states
-    if ((sessionQuery.isLoading && isSessionMode) || (tokenQuery.isLoading && isTokenMode)) {
+    // Loading state
+    if (sessionQuery.isLoading) {
         return renderLoadingScreen();
     }
 
-    // Error states
-    if ((sessionQuery.error && !sessionQuery.data && isSessionMode) || 
-        (tokenQuery.error && !tokenQuery.data && isTokenMode)) {
-        const error = sessionQuery.error || tokenQuery.error;
-        return renderErrorScreen(error);
+    // Error state
+    if (sessionQuery.error && !sessionQuery.data) {
+        return renderErrorScreen(sessionQuery.error);
     }
 
-    // Already verified (session mode)
-    if (sessionQuery.data?.status === 'verified') {
-        return renderSuccessScreen({
-            title: 'Already Verified! ✨',
-            description: 'Your account is already verified and ready to use. You can access all features.',
-            buttonText: 'Continue to Dashboard',
-            action: 'dashboard',
-            gradient: 'linear-gradient(45deg, #6366f1, #8b5cf6)'
-        });
-    }
-
-    // Successfully verified
-    if (isVerified) {
-        const successConfig = getSuccessConfig(emailType);
-        return renderSuccessScreen(successConfig);
-    }
-
-    // Verification error (token mode only)
-    if (verificationError && !isSessionMode) {
-        return renderVerificationErrorScreen();
-    }
-
-    // Main verification/reset waiting screen
+    // Main notification screen
     return renderMainScreen();
 };
 
-export default EmailVerifyPage;
+export default EmailNotificationPage;

@@ -5,24 +5,19 @@ import Typography from "@mui/material/Typography"
 import Divider from "@mui/material/Divider"
 import Fade from "@mui/material/Fade"
 import Slide from "@mui/material/Slide"
-import FormControlLabel from "@mui/material/FormControlLabel"
 import CircularProgress from "@mui/material/CircularProgress"
 import Container from "@mui/material/Container"
 import Grid from "@mui/material/Grid"
-import Checkbox from "@mui/material/Checkbox"
-
 import {
-  FaGoogle,
-  FaFacebook,
   FaUserCircle,
   FaArrowLeft,
 } from 'react-icons/fa';
 import DOMPurify from 'dompurify'
 import InputField from '../components/forms/input.forms';
 import { Spinner } from '../components/spinner/spinners.spinners';
-import { signInValidator } from '../utils/validators/input.validators';
+import { forgotValidator } from '../utils/validators/input.validators';
 import useToast from '../components/toast/toast.toast';
-import { forgotForm} from '../constants/forms.constant';
+import { forgotForm } from '../constants/forms.constant';
 import useAuthTheme from './sections/themeHook.sections';
 import { AnimatedGrid, FloatingElements } from '../components/animations/background.animations';
 import { aiFeatures } from './sections/aifeature.sections';
@@ -30,10 +25,12 @@ import { BrandingSection } from '../components/animations/branding.animations';
 import { CardBox } from '../components/cards/card.card';
 import { useNavigate } from 'react-router-dom';
 import { authConfig } from '../constants/string.constants';
+import { fetchCsrfToken } from '../utils/hooks/token/csrf.token';
+import { axiosPrivate } from '../utils/hooks/instance/axios.instance';
 
 const ForgotPages = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const signinSchema = signInValidator()
+  const forgotSchema = forgotValidator()
   const [values, setValues] = useState({
     email: "",
   });
@@ -64,26 +61,26 @@ const ForgotPages = () => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await signinSchema.validate(values, { abortEarly: false });
+      const csrfToken = await fetchCsrfToken();
+      await forgotSchema.validate(values, { abortEarly: false });
       setIsLoading(false);
-      // const clientData = {
-      //     emailOrPhone:  values.email.toLowerCase().trim(),
-      //     password: values.password.trim()
-      // };
+      const clientData = {
+        email: values.email.toLowerCase().trim(),
+      };
 
-      // const response = await axiosPrivate.post('/api/signin', clientData);
+      const response = await axiosPrivate.post('/api/v2/forgot', clientData, { headers: { 'Content-Type': "application/json", 'x-csrf-token': csrfToken } });
 
-      // if (response.status === 200 || response.status === 201) {
-      //     const result = response.data;
-      //     setAuth({ accessToken: result.token, role: result.role, refreshToken: result.refresh_token });
-      //     localStorage.setItem("persist", true);
-      //     localStorage.setItem('refresh_token', result.refresh_token);
-      //     navigate(result.redirection, { replace: true });
-      //     showToast({ title: "Success", description: result.message, status: "success" });
-      // }
+      if (response.status === 200 || response.status === 201) {
+        const result = response.data;
+        navigate(result.redirectUrl, { replace: true });
+        showToast({ title: "Success", description: result.message, status: "success" });
+      }
     } catch (error) {
-      if (error.response && error.response.data.message) {
+      if (error.response && error.response.data) {
         showToast({ title: "", description: error.response.data.message, status: "error" });
+        if(error.response.data.errors) {
+          setErrors(error.response.data.errors);
+        }
       } else if (error.inner) {
         const validationErrors = {};
         error.inner.forEach((err) => { validationErrors[err.path] = err.message; });
@@ -94,7 +91,7 @@ const ForgotPages = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [signinSchema, values, showToast]);
+  }, [forgotSchema, values, navigate, showToast]);
 
 
   const renderedFormInputs = useMemo(() => (
@@ -180,13 +177,13 @@ const ForgotPages = () => {
                         mb: 1,
                       }}
                     >
-                     {authConfig.forgot.title}
+                      {authConfig.forgot.title}
                     </Typography>
                     <Typography
                       variant="body2"
                       sx={{ color: theme.textSecondary }}
                     >
-                       {authConfig.forgot.subtile}
+                      {authConfig.forgot.subtile}
                     </Typography>
                   </Box>
 
@@ -240,14 +237,14 @@ const ForgotPages = () => {
                   </Box>
 
                   <Divider sx={{ mb: 3, mt: 4, color: theme.textSecondary }}>
-    
+
                   </Divider>
 
                   <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
                     <Button
                       fullWidth
                       variant="outlined"
-                      onClick={()=>navigate("/")}
+                      onClick={() => navigate("/")}
                       startIcon={<FaArrowLeft />}
                       sx={{
                         borderRadius: 2,
@@ -262,10 +259,10 @@ const ForgotPages = () => {
                     >
                       Back
                     </Button>
-                  
+
                   </Box>
 
-                
+
                 </CardBox>
               </Box>
             </Slide>

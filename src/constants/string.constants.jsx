@@ -1,6 +1,8 @@
-export const appConfig={
-    AppName:"EduMonitor",
-    Slogan:"Tracking Truth. Fighting Hate."
+export const appConfig = {
+  AppName: "EduMonitor",
+  Slogan: "Tracking Truth. Fighting Hate.",
+  title: "Initializing AI Systems...",
+  subtitle: "Connecting to neural networks",
 }
 export const authConfig = {
   signIn: {
@@ -39,9 +41,18 @@ export const authConfig = {
     description: "We've sent a 6-digit code to your registered device.",
     buttonText: "Verify 2FA",
   },
+  logOut:{
+    title:"Log Out"
+  }
 };
 
-export const errorMessage={
-    error404:"Page Not Found",
-    error403:"Forbiden"
+export const errorMessage = {
+  error404: "Page Not Found",
+  error403: "Forbiden"
+}
+
+export const footerText = {
+  copyRigth: "Tout droit reservé",
+  developedBy: "Self-Sec",
+  link: "https://self-sec.com"
 }

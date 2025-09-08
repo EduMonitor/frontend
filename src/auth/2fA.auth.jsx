@@ -1,25 +1,19 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  TextField,
-  Button,
-  IconButton,
-  Divider,
-  Chip,
-  CircularProgress,
-  Alert,
-  Fade,
-  Slide,
-  Container,
-  Avatar,
-  Stack,
-  Paper,
-  LinearProgress,
-} from '@mui/material';
-import { FaCircleCheck, FaShield } from 'react-icons/fa6';
+
+import Box from "@mui/material/Box"
+import Button from "@mui/material/Button"
+import Typography from "@mui/material/Typography"
+import Divider from "@mui/material/Divider"
+import Fade from "@mui/material/Fade"
+import Slide from "@mui/material/Slide"
+import TextField from "@mui/material/TextField"
+import CircularProgress from "@mui/material/CircularProgress"
+import Container from "@mui/material/Container"
+import Alert from "@mui/material/Alert"
+import Stack from "@mui/material/Stack"
+
+import LinearProgress from "@mui/material/LinearProgress"
+import {  FaShield } from 'react-icons/fa6';
 import { FaArrowLeft, FaCalendarTimes, FaCheck, FaEnvelope, FaLock, FaPhone, FaSync, FaTimes } from 'react-icons/fa';
 import useAuthTheme from './sections/themeHook.sections';
 import { AnimatedGrid, FloatingElements } from '../components/animations/background.animations';

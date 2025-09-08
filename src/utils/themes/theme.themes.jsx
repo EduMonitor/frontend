@@ -1,6 +1,6 @@
 import { createTheme, alpha } from '@mui/material/styles';
 
-// Custom shadows for better depth perception
+// Custom shadows for better depth perception (complete 25 levels)
 const customShadows = [
     'none',
     'hsla(220, 30%, 5%, 0.7) 0px 4px 16px 0px, hsla(220, 25%, 10%, 0.8) 0px 8px 16px -5px',
@@ -12,9 +12,25 @@ const customShadows = [
     'hsla(220, 30%, 5%, 0.3) 0px 12px 17px 0px, hsla(220, 20%, 20%, 0.15) 0px 8px 14px -7px',
     'hsla(220, 30%, 5%, 0.3) 0px 14px 20px 0px, hsla(220, 20%, 20%, 0.1) 0px 9px 16px -8px',
     'hsla(220, 30%, 5%, 0.25) 0px 16px 24px 0px, hsla(220, 20%, 20%, 0.08) 0px 10px 18px -9px',
+    // Additional shadows for levels 10-24
+    'hsla(220, 30%, 5%, 0.25) 0px 18px 28px 0px, hsla(220, 20%, 20%, 0.07) 0px 12px 20px -10px',
+    'hsla(220, 30%, 5%, 0.24) 0px 20px 32px 0px, hsla(220, 20%, 20%, 0.06) 0px 14px 22px -11px',
+    'hsla(220, 30%, 5%, 0.23) 0px 22px 36px 0px, hsla(220, 20%, 20%, 0.05) 0px 16px 24px -12px',
+    'hsla(220, 30%, 5%, 0.22) 0px 24px 40px 0px, hsla(220, 20%, 20%, 0.04) 0px 18px 26px -13px',
+    'hsla(220, 30%, 5%, 0.21) 0px 26px 44px 0px, hsla(220, 20%, 20%, 0.03) 0px 20px 28px -14px',
+    'hsla(220, 30%, 5%, 0.20) 0px 28px 48px 0px, hsla(220, 20%, 20%, 0.02) 0px 22px 30px -15px',
+    'hsla(220, 30%, 5%, 0.19) 0px 30px 52px 0px, hsla(220, 20%, 20%, 0.02) 0px 24px 32px -16px',
+    'hsla(220, 30%, 5%, 0.18) 0px 32px 56px 0px, hsla(220, 20%, 20%, 0.02) 0px 26px 34px -17px',
+    'hsla(220, 30%, 5%, 0.17) 0px 34px 60px 0px, hsla(220, 20%, 20%, 0.02) 0px 28px 36px -18px',
+    'hsla(220, 30%, 5%, 0.16) 0px 36px 64px 0px, hsla(220, 20%, 20%, 0.02) 0px 30px 38px -19px',
+    'hsla(220, 30%, 5%, 0.15) 0px 38px 68px 0px, hsla(220, 20%, 20%, 0.02) 0px 32px 40px -20px',
+    'hsla(220, 30%, 5%, 0.14) 0px 40px 72px 0px, hsla(220, 20%, 20%, 0.02) 0px 34px 42px -21px',
+    'hsla(220, 30%, 5%, 0.13) 0px 42px 76px 0px, hsla(220, 20%, 20%, 0.02) 0px 36px 44px -22px',
+    'hsla(220, 30%, 5%, 0.12) 0px 44px 80px 0px, hsla(220, 20%, 20%, 0.02) 0px 38px 46px -23px',
+    'hsla(220, 30%, 5%, 0.11) 0px 46px 84px 0px, hsla(220, 20%, 20%, 0.02) 0px 40px 48px -24px',
 ];
 
-// Light theme shadows
+// Light theme shadows (complete 25 levels)
 const lightShadows = [
     'none',
     'hsla(220, 30%, 5%, 0.1) 0px 4px 16px 0px, hsla(220, 25%, 10%, 0.15) 0px 8px 16px -5px',
@@ -26,6 +42,22 @@ const lightShadows = [
     'hsla(220, 30%, 5%, 0.06) 0px 12px 17px 0px, hsla(220, 20%, 20%, 0.05) 0px 8px 14px -7px',
     'hsla(220, 30%, 5%, 0.06) 0px 14px 20px 0px, hsla(220, 20%, 20%, 0.04) 0px 9px 16px -8px',
     'hsla(220, 30%, 5%, 0.05) 0px 16px 24px 0px, hsla(220, 20%, 20%, 0.03) 0px 10px 18px -9px',
+    // Additional shadows for levels 10-24
+    'hsla(220, 30%, 5%, 0.05) 0px 18px 28px 0px, hsla(220, 20%, 20%, 0.03) 0px 12px 20px -10px',
+    'hsla(220, 30%, 5%, 0.04) 0px 20px 32px 0px, hsla(220, 20%, 20%, 0.03) 0px 14px 22px -11px',
+    'hsla(220, 30%, 5%, 0.04) 0px 22px 36px 0px, hsla(220, 20%, 20%, 0.03) 0px 16px 24px -12px',
+    'hsla(220, 30%, 5%, 0.04) 0px 24px 40px 0px, hsla(220, 20%, 20%, 0.02) 0px 18px 26px -13px',
+    'hsla(220, 30%, 5%, 0.04) 0px 26px 44px 0px, hsla(220, 20%, 20%, 0.02) 0px 20px 28px -14px',
+    'hsla(220, 30%, 5%, 0.03) 0px 28px 48px 0px, hsla(220, 20%, 20%, 0.02) 0px 22px 30px -15px',
+    'hsla(220, 30%, 5%, 0.03) 0px 30px 52px 0px, hsla(220, 20%, 20%, 0.02) 0px 24px 32px -16px',
+    'hsla(220, 30%, 5%, 0.03) 0px 32px 56px 0px, hsla(220, 20%, 20%, 0.02) 0px 26px 34px -17px',
+    'hsla(220, 30%, 5%, 0.03) 0px 34px 60px 0px, hsla(220, 20%, 20%, 0.02) 0px 28px 36px -18px',
+    'hsla(220, 30%, 5%, 0.03) 0px 36px 64px 0px, hsla(220, 20%, 20%, 0.02) 0px 30px 38px -19px',
+    'hsla(220, 30%, 5%, 0.02) 0px 38px 68px 0px, hsla(220, 20%, 20%, 0.02) 0px 32px 40px -20px',
+    'hsla(220, 30%, 5%, 0.02) 0px 40px 72px 0px, hsla(220, 20%, 20%, 0.02) 0px 34px 42px -21px',
+    'hsla(220, 30%, 5%, 0.02) 0px 42px 76px 0px, hsla(220, 20%, 20%, 0.02) 0px 36px 44px -22px',
+    'hsla(220, 30%, 5%, 0.02) 0px 44px 80px 0px, hsla(220, 20%, 20%, 0.02) 0px 38px 46px -23px',
+    'hsla(220, 30%, 5%, 0.02) 0px 46px 84px 0px, hsla(220, 20%, 20%, 0.02) 0px 40px 48px -24px',
 ];
 
 // Color palette definitions
@@ -219,6 +251,7 @@ const getComponents = (mode) => ({
                 '&.Mui-focused': {
                     color: blue[500],
                 },
+                fontSize:"0.25rem"
             },
         },
     },
@@ -396,4 +429,3 @@ export const lightTheme = createTheme({
     shadows: lightShadows,
     components: getComponents('light'),
 });
-
