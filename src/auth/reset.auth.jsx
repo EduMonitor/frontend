@@ -51,7 +51,7 @@ const fetchSessionStatus = async (uuid) => {
   if (!uuid) throw new Error('No UUID provided');
   const csrfToken = fetchCsrfToken();
 
-  const response = await axiosPrivate.get(`/api/v2/sessions/${uuid}`, {
+  const response = await axiosPrivate.get(`/api/v2/session/${uuid}`, {
     headers: {
       'x-csrf-token': csrfToken
     }
@@ -143,8 +143,8 @@ const ResetPages = () => {
   useEffect(() => {
     if (tokenError && tokenErrorData) {
       const status = tokenErrorData.response?.status;
-      const message = tokenErrorData.response?.data?.message || tokenErrorData.message;
-      
+      const message = tokenErrorData.response?.data?.detail?.message || tokenErrorData.message;
+
       if (status === 400) {
         showToast({ 
           title: "Invalid Token", 
@@ -195,7 +195,7 @@ const ResetPages = () => {
       if (sessionErrorData.response?.status === 440) {
         console.log('Session expired, but token might still be valid');
       } else {
-        console.warn('Session check failed:', sessionErrorData.response?.data?.message);
+        console.warn('Session check failed:', sessionErrorData.response?.data?.detail?.message);
       }
     }
   }, [sessionError, sessionErrorData]);
@@ -311,14 +311,14 @@ const ResetPages = () => {
       }
       
     } catch (error) {
-      if (error.response && error.response.data.error.message) {
+      if (error.response && error.response.data.detail.message) {
         showToast({
           title: "Reset Failed",
-          description: error.response.data.error.message,
+          description: error.response.data.detail.message,
           status: "error"
         });
-        setErrors(error.response.data.errors || {});
-        
+        setErrors(error.response.data.detail.errors || {});
+
         // Handle specific error cases
         if (error.response.status === 400 || error.response.status === 401) {
           // Token might have expired during the process

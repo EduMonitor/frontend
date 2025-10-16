@@ -1,7 +1,7 @@
 import { memo, useState } from 'react';
 import PropTypes from 'prop-types';
 import { AppBar, Toolbar, IconButton, Badge, Menu, MenuItem, Divider, Avatar, Typography, Box } from '@mui/material';
-import { FiMenu, FiChevronDown, FiBell } from 'react-icons/fi';
+import { FiMenu, FiChevronDown, FiBell, FiFacebook, FiTwitter, FiInstagram, FiLinkedin } from 'react-icons/fi';
 import { Link } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 
@@ -56,6 +56,7 @@ const MobileNav = memo(({ onOpen, name, onLogout, title, profileImage, markAsRea
                 </Box>
 
                 <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center' }}>
+                    
                     <IconButton 
                         onClick={onOpen} 
                         sx={{ 
@@ -71,6 +72,13 @@ const MobileNav = memo(({ onOpen, name, onLogout, title, profileImage, markAsRea
                 </Box>
 
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <FiFacebook size={24} color="#1877F2" />
+                        <FiTwitter size={24} color="#1DA1F2" style={{ marginLeft: 8 }} />
+                        <FiLinkedin size={24} color="#0077B5" style={{ marginLeft: 8 }} />
+                        <FiInstagram size={24} color="#E1306C" style={{ marginLeft: 8 }} />
+                        
+                    </Box>
                     <Box>
                         <IconButton 
                             sx={{ 

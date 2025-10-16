@@ -10,8 +10,8 @@ const NotifyAuth = lazy(() => import("./auth/notifications.auth"));
 const EmailVerification = lazy(() => import("./auth/emailVerification.auth"));
 const ForgotPages = lazy(() => import("./auth/forgot.auth"));
 const ResetPages = lazy(() => import("./auth/reset.auth"));
-const Error404 = lazy(() => import("./pages/errors/404.errors"));
-const Error403 = lazy(() => import("./pages/errors/403.errors"));
+const NotFoundPage = lazy(() => import("./pages/errors/404.errors"));
+const ForbiddenPage = lazy(() => import("./pages/errors/403.errors"));
 
 // Lightweight components that can be direct imports
 import ThemeToggleButton from "./components/theme/toggle.theme";
@@ -20,6 +20,8 @@ import ScrollToTopButton from "./components/theme/Topdown.theme";
 import ControllerLayout from "./controllers/controllersLayoute";
 import PrivateRoute from "./utils/hooks/keys/protected.key";
 import Dashboard from "./controllers/dashboard/dashboard.dashbord";
+import Profiles from "./controllers/profiles/profiles";
+import MonitoringFeedPages from "./controllers/scappers/monitor.scrapers";
 
 // Single optimized loading component for all routes
 const LoadingFallback = memo(() => (
@@ -53,12 +55,14 @@ const App = memo(() => {
           <Route path={AuthRoutes.twoFactor} element={<TwoFactorAuth />} />
 
           {/* Error Routes */}
-          <Route path={PagesRoutes.errorPages.Error404} element={<Error404 />} />
-          <Route path={PagesRoutes.errorPages.Error403} element={<Error403 />} />
+          <Route path={PagesRoutes.errorPages.Error404} element={<NotFoundPage />} />
+          <Route path={PagesRoutes.errorPages.Error403} element={<ForbiddenPage />} />
 
           {/* Features controller routes */}
           <Route path={"/ai"} element={<ControllerLayout/>}>
             <Route path={AdminRoutes.dashboard} element={<PrivateRoute element={<Dashboard/>} allowedRoles={['admin','user','analys','view']}/> }/>
+            <Route path={AdminRoutes.profiles} element={<PrivateRoute element={<Profiles/>} allowedRoles={['admin','user','analys','view']}/> }/>
+            <Route path={AdminRoutes.Monitoring.Feed} element={<PrivateRoute element={<MonitoringFeedPages/>} allowedRoles={['admin','user','analys','view']}/> }/>
 
           </Route>
         </Routes>

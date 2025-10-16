@@ -33,6 +33,7 @@ import { authConfig } from '../constants/string.constants';
 import { axiosPrivate } from '../utils/hooks/instance/axios.instance';
 import useAuth from '../utils/hooks/contexts/useAth.contexts';
 import { fetchCsrfToken } from '../utils/hooks/token/csrf.token';
+import useFacebookAuth from '../utils/functions/handlFacebook-login';
 
 const SignInAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -47,7 +48,7 @@ const SignInAuth = () => {
   const navigate = useNavigate();
   const [errors, setErrors] = useState({})
   const theme = useAuthTheme();
-
+  const { isFacebookLoading, handleFacebookLogin, FacebookToastComponent } = useFacebookAuth();
 
   const handleInputChange = useCallback((event) => {
     const { name, type, value, checked } = event.target;
@@ -64,47 +65,120 @@ const SignInAuth = () => {
 
 
 
-
-  const handleLogin = useCallback(async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      await signinSchema.validate(values, { abortEarly: false });
-      const csrfToken = await fetchCsrfToken();
-      console.log("CSRF Token:", csrfToken);
-      const clientData = {
-        email: values.email.toLowerCase().trim(),
-        password: values.password.trim()
-      };
-
-      const response = await axiosPrivate.post('/api/v2/signin', clientData, { headers: { "x-csrf-token": csrfToken } });
-
-      if (response.status === 200 || response.status === 201) {
-        const result = response.data;
-        if(result.status==="verification_required"){
-        showToast({ title: "Verification Required", description: result.message, status: "warning" });
+const handleLogin = useCallback(async (e) => {
+  e.preventDefault();
+  setIsLoading(true);
+  
+  try {
+    // Validate form
+    await signinSchema.validate(values, { abortEarly: false });
+    
+    // Get CSRF token
+    const csrfToken = await fetchCsrfToken();
+    
+    // Prepare login data
+    const clientData = {
+      email: values.email.toLowerCase().trim(),
+      password: values.password.trim()
+    };
+    
+    // Send login request
+    const response = await axiosPrivate.post('/api/v2/signin', clientData, { 
+      headers: { "x-csrf-token": csrfToken } 
+    });
+        
+    if (response.status === 200 || response.status === 201) {
+      const result = response.data;
+      
+      // Handle email verification required
+      if (result.status === "verification_required") {
+        showToast({ 
+          title: "Verification Required", 
+          description: result.message, 
+          status: "warning" 
+        });
         navigate(result.redirectUrl, { replace: true });
         return;
       }
-      setAuth({ accessToken: result.accessToken, role: result.data.role });
-      localStorage.setItem("persist", true);
-      navigate(result.redirectUrl, { replace: true });
-      showToast({ title: "Success", description: result.message, status: "success" });
+      
+      // Handle 2FA required
+      if (result.status === "2fa_required") {
+          showToast({ 
+          title: "", 
+          description: result.message, 
+          status: "info" 
+        });
+        
+        // Navigate to 2FA page with uuid in URL
+        const redirectPath = result.redirectUrl || `/auth/verify-factor/${result.uuid}`;
+        
+        navigate(redirectPath, { 
+          replace: true,
+          state: { 
+            uuid: result.uuid,
+            email: result.email 
+          }
+        });
+        return;
       }
-    } catch (error) {
-      if (error.response && error.response.data.message) {
-        showToast({ title: "", description: error.response.data.message, status: "error" });
-      } else if (error.inner) {
-        const validationErrors = {};
-        error.inner.forEach((err) => { validationErrors[err.path] = err.message; });
-        setErrors(validationErrors);
-      } else {
-        showToast({ title: "", description: error.message, status: "error" });
+      
+      // Handle direct login (2FA disabled)
+      if (result.status === "success" && result.accessToken) {
+        setAuth({ 
+          accessToken: result.accessToken, 
+          role: result.data.role,
+          uuid: result.data.uuid,
+          firstName: result.data.firstName
+        });
+        
+        localStorage.setItem("persist", true);
+        
+        navigate(result.redirectUrl, { replace: true });
+        showToast({ 
+          title: "Success", 
+          description: result.message, 
+          status: "success" 
+        });
       }
-    } finally {
-      setIsLoading(false);
     }
-  }, [signinSchema, values, setAuth, navigate, showToast]);
+  } catch (error) {    
+    // Handle API errors
+    if (error.response && error.response.data.detail) {
+      const apiError = error.response.data.detail;
+      const statuCode= error.response.data.detail.status===401
+      // Handle field-specific errors
+      if (apiError.errors) {
+        setErrors(apiError.errors);
+      }
+      
+      // Show error message
+      showToast({ 
+        title:!statuCode && apiError.status === "locked" ? "Account Locked" : "Login Failed", 
+        description: apiError.message, 
+        status:statuCode?"warning": "error" 
+      });
+    } 
+    // Handle validation errors
+    else if (error.inner) {
+      const validationErrors = {};
+      error.inner.forEach((err) => { 
+        validationErrors[err.path] = err.message; 
+      });
+      setErrors(validationErrors);
+    } 
+    // Handle unexpected errors
+    else {
+      showToast({ 
+        title: "Error", 
+        description: error.message || "An unexpected error occurred", 
+        status: "error" 
+      });
+    }
+  } finally {
+    setIsLoading(false);
+  }
+}, [signinSchema, values, setAuth, navigate, showToast]);
+
 
 
   const renderedFormInputs = useMemo(() => (
@@ -302,6 +376,8 @@ const SignInAuth = () => {
                     <Button
                       fullWidth
                       variant="outlined"
+                      onClick={handleFacebookLogin}
+                      disabled={isFacebookLoading}  
                       startIcon={<FaFacebook />}
                       sx={{
                         borderRadius: 2,
@@ -350,6 +426,7 @@ const SignInAuth = () => {
       {/* Loading Backdrop */}
       <SubmittingSpinner isLoading={isLoading} />
       {ToastComponent}
+      {FacebookToastComponent}
     </Box>
   );
 };

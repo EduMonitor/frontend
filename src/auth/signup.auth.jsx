@@ -32,6 +32,7 @@ import { authConfig } from '../constants/string.constants';
 import { signUpValidator } from '../utils/validators/input.validators';
 import { fetchCsrfToken } from '../utils/hooks/token/csrf.token';
 import { axiosPrivate } from '../utils/hooks/instance/axios.instance';
+import useFacebookAuth from '../utils/functions/handlFacebook-login';
 const SignUpAuth = () => {
     const [isLoading, setIsLoading] = useState(false);
     const signUpSchema = signUpValidator()
@@ -45,6 +46,7 @@ const SignUpAuth = () => {
     });
     const { showToast, ToastComponent } = useToast()
     const [passwordStrength, setPasswordStrength] = useState(0);
+  const { isFacebookLoading, handleFacebookLogin, FacebookToastComponent } = useFacebookAuth();
 
     const navigate = useNavigate()
     const [errors, setErrors] = useState({})
@@ -116,12 +118,10 @@ const SignUpAuth = () => {
             }
 
         } catch (error) {
-            console.error('Signup error:', error);
-
             if (error.response?.data) {
                 // New errorHandler format
-                const apiError = error.response.data.errors || {};
-                const safeMessage = error.response.data.message || "An error occurred during signup";
+                const apiError = error.response.data.detail.errors || {};
+                const safeMessage = error.response.data.detail.message || "An error occurred during signup";
 
                 showToast({
                     title: ``,
@@ -463,6 +463,8 @@ const SignUpAuth = () => {
                                         <Button
                                             fullWidth
                                             variant="outlined"
+                                            onClick={handleFacebookLogin}
+                                            disabled={isFacebookLoading}
                                             startIcon={<FaFacebook />}
                                             sx={{
                                                 borderRadius: 2,
@@ -511,6 +513,7 @@ const SignUpAuth = () => {
             {/* Loading Backdrop */}
             <Spinner isLoading={isLoading} />
             {ToastComponent}
+            {FacebookToastComponent}
         </Box>
     );
 };

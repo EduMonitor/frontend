@@ -1,7 +1,7 @@
 export const AuthRoutes = {
   signIn: "/",
   signUp: "/auth/signup",
-  twoFactor: "/auth/verify-factor",
+  twoFactor: "/auth/verify-factor/:uuid",
   forgotPassword: "/auth/forgot-password",
   resetPassword: "/auth/reset-password/:token",
   notifyAuth: "/auth/notifications/:uuid",

@@ -11,7 +11,7 @@ const useCurrentUser = () => {
     // Fetch function for current user with try-catch block
     const fetchCurrentUser = async () => {
         try {
-            const response = await axiosPrivate.get('/api/v2/auth/validate');
+            const response = await axiosPrivate.get('/api/v2/user/me');
             return response.data // Return the user data if successful
         } catch (error) {
             // Handle error explicitly
@@ -23,14 +23,13 @@ const useCurrentUser = () => {
                 }// Rethrow the error for React Query's onError handler
             } else {
                 // Handle network or other errors
-                console.error("Network or unknown error:", error.message);
                 throw new Error("An unknown error occurred while fetching user data.");
             }
         }
     };
 
     // Use React Query for fetching user data
-    const { data: user, isError, isLoading , refetch} = useQuery({
+    const { data: user, isError, isLoading , refetch, error} = useQuery({
         queryKey: ['currentUser'],
         queryFn: fetchCurrentUser,
         staleTime: 5 * 60 * 1000, // ✅ Keep data fresh for 5 mi
@@ -39,8 +38,7 @@ const useCurrentUser = () => {
         refetchOnWindowFocus: false, // Disable refetching on window focus
 
     });
-
-    return { currentUser:user?.user, isAuthenticated:user?.isAuthenticated, isError, isLoading, refetch };
+    return { currentUser:user?.user, isAuthenticated:user?.isAuthenticated, isError, isLoading, refetch, error };
 };
 
 export default useCurrentUser;

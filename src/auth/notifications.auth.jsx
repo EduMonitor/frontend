@@ -56,8 +56,8 @@ const createApiCall = async (url, options = {}) => {
         });
         return response.data;
     } catch (error) {
-        const errorMessage = error.response?.data?.error ||
-            error.response?.data?.message ||
+        const errorMessage = error.response?.data?.detail?.error ||
+            error.response?.data?.detail?.message ||
             'Request failed';
         throw new Error(errorMessage);
     }
@@ -71,7 +71,7 @@ const handleApiError = (error) => {
     }
 
     const { status, data } = error.response;
-    const errorMessage = data.error || data.message;
+    const errorMessage = data.detail.error || data.detail.message;
 
     switch (status) {
         case ERROR_CODES.BAD_REQUEST:

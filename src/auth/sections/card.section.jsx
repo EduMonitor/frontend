@@ -8,6 +8,7 @@ import Stack from '@mui/material/Stack'
 import CircularProgress from '@mui/material/CircularProgress'
 import { useThemeMode } from "../../utils/hooks/contexts/useTheme.context"
 import { FaCircleCheck } from "react-icons/fa6"
+import { useNavigate } from "react-router-dom"
 
 export const SuccessCardSection = () => {
   const { currentTheme } = useThemeMode(); // ✅ Destructure correctly
@@ -79,9 +80,10 @@ export const SuccessCardSection = () => {
   )
 }
 
-export const ErrorCardSection = ({ setStep, setAttempts, setTimeLeft, setVerificationCode, setErrorMessage }) => {
+export const ErrorCardSection = ({  setVerificationCode }) => {
   const { currentTheme } = useThemeMode(); // ✅ Destructure correctly
   const { palette } = currentTheme;
+  const navigate = useNavigate(); // Simple navigation function
   return (<Slide direction="up" in timeout={800}>
     <Box sx={{ textAlign: 'center' }}>
       <Box
@@ -130,12 +132,9 @@ export const ErrorCardSection = ({ setStep, setAttempts, setTimeLeft, setVerific
         <Button
           fullWidth
           variant="contained"
-          onClick={() => {
-            setStep('verify');
-            setAttempts(0);
-            setTimeLeft(300);
+          onClick={() => {     
             setVerificationCode(['', '', '', '', '', '']);
-            setErrorMessage('');
+            navigate('/');
           }}
           sx={{
             height: 56,
@@ -152,6 +151,7 @@ export const ErrorCardSection = ({ setStep, setAttempts, setTimeLeft, setVerific
         <Button
           fullWidth
           variant="outlined"
+          onClick={() => navigate('/')}
           sx={{
             height: 56,
             borderRadius: 2,

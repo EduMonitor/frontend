@@ -10,7 +10,7 @@ import useRefreshToken from '../instance/refreshtoken.instance';
 const PrivateRoute = ({ element, allowedRoles }) => {
   const { auth } = useAuth();
   // Redirect to Sign In if not authenticated
-  const {refresh} = useRefreshToken();
+  const refresh = useRefreshToken();
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();  // Capture the current location
 

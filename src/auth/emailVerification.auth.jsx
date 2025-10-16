@@ -156,7 +156,7 @@ const EmailVerificationPage = () => {
     // ============================
     const handlers = {
         backToLogin: () => navigate('/'),
-        continueToDashboard: () => navigate('/dashboard'),
+        continueToDashboard: () => navigate('/'),
         goToPasswordReset: () => navigate(`/auth/reset-password/${token}`),
         requestNewLink: () => {
             if (userUuid) {
@@ -169,7 +169,7 @@ const EmailVerificationPage = () => {
             switch (action) {
                 case 'reset':
                     return handlers.goToPasswordReset;
-                case 'dashboard':
+                case 'verification':
                     return handlers.continueToDashboard;
                 default:
                     return handlers.continueToDashboard;
