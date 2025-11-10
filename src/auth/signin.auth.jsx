@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import Box from "@mui/material/Box"
 import Button from "@mui/material/Button"
 import Typography from "@mui/material/Typography"
@@ -18,7 +18,7 @@ import {
 } from 'react-icons/fa';
 import DOMPurify from 'dompurify'
 import InputField from '../components/forms/input.forms';
-import {  SubmittingSpinner } from '../components/spinner/spinners.spinners';
+import { SubmittingSpinner } from '../components/spinner/spinners.spinners';
 import { signInValidator } from '../utils/validators/input.validators';
 import useToast from '../components/toast/toast.toast';
 import { loginForm } from '../constants/forms.constant';
@@ -34,6 +34,7 @@ import { axiosPrivate } from '../utils/hooks/instance/axios.instance';
 import useAuth from '../utils/hooks/contexts/useAth.contexts';
 import { fetchCsrfToken } from '../utils/hooks/token/csrf.token';
 import useFacebookAuth from '../utils/functions/handlFacebook-login';
+import { handleGoogleSignIn } from '../utils/functions/handleGoogle-login';
 
 const SignInAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -65,119 +66,119 @@ const SignInAuth = () => {
 
 
 
-const handleLogin = useCallback(async (e) => {
-  e.preventDefault();
-  setIsLoading(true);
-  
-  try {
-    // Validate form
-    await signinSchema.validate(values, { abortEarly: false });
-    
-    // Get CSRF token
-    const csrfToken = await fetchCsrfToken();
-    
-    // Prepare login data
-    const clientData = {
-      email: values.email.toLowerCase().trim(),
-      password: values.password.trim()
-    };
-    
-    // Send login request
-    const response = await axiosPrivate.post('/api/v2/signin', clientData, { 
-      headers: { "x-csrf-token": csrfToken } 
-    });
-        
-    if (response.status === 200 || response.status === 201) {
-      const result = response.data;
-      
-      // Handle email verification required
-      if (result.status === "verification_required") {
-        showToast({ 
-          title: "Verification Required", 
-          description: result.message, 
-          status: "warning" 
-        });
-        navigate(result.redirectUrl, { replace: true });
-        return;
+  const handleLogin = useCallback(async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      // Validate form
+      await signinSchema.validate(values, { abortEarly: false });
+
+      // Get CSRF token
+      const csrfToken = await fetchCsrfToken();
+
+      // Prepare login data
+      const clientData = {
+        email: values.email.toLowerCase().trim(),
+        password: values.password.trim()
+      };
+
+      // Send login request
+      const response = await axiosPrivate.post('/api/v2/signin', clientData, {
+        headers: { "x-csrf-token": csrfToken }
+      });
+
+      if (response.status === 200 || response.status === 201) {
+        const result = response.data;
+
+        // Handle email verification required
+        if (result.status === "verification_required") {
+          showToast({
+            title: "Verification Required",
+            description: result.message,
+            status: "warning"
+          });
+          navigate(result.redirectUrl, { replace: true });
+          return;
+        }
+
+        // Handle 2FA required
+        if (result.status === "2fa_required") {
+          showToast({
+            title: "",
+            description: result.message,
+            status: "info"
+          });
+
+          // Navigate to 2FA page with uuid in URL
+          const redirectPath = result.redirectUrl || `/auth/verify-factor/${result.uuid}`;
+
+          navigate(redirectPath, {
+            replace: true,
+            state: {
+              uuid: result.uuid,
+              email: result.email
+            }
+          });
+          return;
+        }
+
+        // Handle direct login (2FA disabled)
+        if (result.status === "success" && result.accessToken) {
+          setAuth({
+            accessToken: result.accessToken,
+            role: result.data.role,
+            uuid: result.data.uuid,
+            firstName: result.data.firstName
+          });
+
+          localStorage.setItem("persist", true);
+
+          navigate(result.redirectUrl, { replace: true });
+          showToast({
+            title: "Success",
+            description: result.message,
+            status: "success"
+          });
+        }
       }
-      
-      // Handle 2FA required
-      if (result.status === "2fa_required") {
-          showToast({ 
-          title: "", 
-          description: result.message, 
-          status: "info" 
-        });
-        
-        // Navigate to 2FA page with uuid in URL
-        const redirectPath = result.redirectUrl || `/auth/verify-factor/${result.uuid}`;
-        
-        navigate(redirectPath, { 
-          replace: true,
-          state: { 
-            uuid: result.uuid,
-            email: result.email 
-          }
-        });
-        return;
-      }
-      
-      // Handle direct login (2FA disabled)
-      if (result.status === "success" && result.accessToken) {
-        setAuth({ 
-          accessToken: result.accessToken, 
-          role: result.data.role,
-          uuid: result.data.uuid,
-          firstName: result.data.firstName
-        });
-        
-        localStorage.setItem("persist", true);
-        
-        navigate(result.redirectUrl, { replace: true });
-        showToast({ 
-          title: "Success", 
-          description: result.message, 
-          status: "success" 
+    } catch (error) {
+      // Handle API errors
+      if (error.response && error.response.data.detail) {
+        const apiError = error.response.data.detail;
+        const statuCode = error.response.data.detail.status === 401
+        // Handle field-specific errors
+        if (apiError.errors) {
+          setErrors(apiError.errors);
+        }
+
+        // Show error message
+        showToast({
+          title: !statuCode && apiError.status === "locked" ? "Account Locked" : "Login Failed",
+          description: apiError.message,
+          status: statuCode ? "warning" : "error"
         });
       }
+      // Handle validation errors
+      else if (error.inner) {
+        const validationErrors = {};
+        error.inner.forEach((err) => {
+          validationErrors[err.path] = err.message;
+        });
+        setErrors(validationErrors);
+      }
+      // Handle unexpected errors
+      else {
+        showToast({
+          title: "Error",
+          description: error.message || "An unexpected error occurred",
+          status: "error"
+        });
+      }
+    } finally {
+      setIsLoading(false);
     }
-  } catch (error) {    
-    // Handle API errors
-    if (error.response && error.response.data.detail) {
-      const apiError = error.response.data.detail;
-      const statuCode= error.response.data.detail.status===401
-      // Handle field-specific errors
-      if (apiError.errors) {
-        setErrors(apiError.errors);
-      }
-      
-      // Show error message
-      showToast({ 
-        title:!statuCode && apiError.status === "locked" ? "Account Locked" : "Login Failed", 
-        description: apiError.message, 
-        status:statuCode?"warning": "error" 
-      });
-    } 
-    // Handle validation errors
-    else if (error.inner) {
-      const validationErrors = {};
-      error.inner.forEach((err) => { 
-        validationErrors[err.path] = err.message; 
-      });
-      setErrors(validationErrors);
-    } 
-    // Handle unexpected errors
-    else {
-      showToast({ 
-        title: "Error", 
-        description: error.message || "An unexpected error occurred", 
-        status: "error" 
-      });
-    }
-  } finally {
-    setIsLoading(false);
-  }
-}, [signinSchema, values, setAuth, navigate, showToast]);
+  }, [signinSchema, values, setAuth, navigate, showToast]);
 
 
 
@@ -359,6 +360,7 @@ const handleLogin = useCallback(async (e) => {
                     <Button
                       fullWidth
                       variant="outlined"
+                      onClick={() => handleGoogleSignIn(setIsLoading)}
                       startIcon={<FaGoogle />}
                       sx={{
                         borderRadius: 2,
@@ -377,7 +379,7 @@ const handleLogin = useCallback(async (e) => {
                       fullWidth
                       variant="outlined"
                       onClick={handleFacebookLogin}
-                      disabled={isFacebookLoading}  
+                      disabled={isFacebookLoading}
                       startIcon={<FaFacebook />}
                       sx={{
                         borderRadius: 2,
@@ -424,7 +426,7 @@ const handleLogin = useCallback(async (e) => {
       </Container>
 
       {/* Loading Backdrop */}
-      <SubmittingSpinner isLoading={isLoading} />
+      <SubmittingSpinner isLoading={isLoading || isFacebookLoading} />
       {ToastComponent}
       {FacebookToastComponent}
     </Box>

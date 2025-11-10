@@ -157,17 +157,17 @@ const ContentSidebar = ({ onClose, menuItems, onClick, ...rest }) => {
                                                         "&:hover": { 
                                                             bgcolor: theme.palette.action.hover,
                                                         },
-                                                        bgcolor: subActive ? theme.palette.primary.light : 'transparent',
+                                                        bgcolor: subActive ? theme.palette.secondary.light : 'transparent',
                                                     }}
                                                 >
                                                     {subItem.icon && (
                                                         <subItem.icon
                                                             size={16}
-                                                            color={subActive ? theme.palette.primary.contrastText : theme.palette.text.secondary}
+                                                            color={subActive ? theme.palette.primary.contrastText : theme.palette.text.primary}
                                                         />
                                                     )}
                                                     <Typography 
-                                                        color={subActive ? theme.palette.primary.contrastText : theme.palette.text.secondary} 
+                                                        color={subActive ? theme.palette.primary.contrastText : theme.palette.text.primary} 
                                                         variant="body2"
                                                         sx={{ 
                                                             fontSize: '0.8rem',

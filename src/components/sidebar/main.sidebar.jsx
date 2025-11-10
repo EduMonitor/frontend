@@ -95,7 +95,7 @@ const MainSideBar = ({ children, title }) => {
     };
 
     return (
-        <Box minHeight="100vh">
+        <Box>
             {/* Single Suspense boundary for all sidebar components */}
             <Suspense fallback={<Spinner isLoading={userLoading} />}>
                 {/* Desktop Sidebar */}
@@ -133,13 +133,11 @@ const MainSideBar = ({ children, title }) => {
                 p: { md: 4, sm: 0, xs: 0 },
                 mt: 5,
                 mb: 3,
-                minHeight: "100vh",
-                overflow: "hidden",
-                overflowY: "auto",
-                position: 'relative',
+              
+               
+                
                 background: themes.background || theme.palette.background.default,
                 backgroundRepeat: 'no-repeat',
-                backgroundSize: 'cover',
                 color: theme.palette.text.primary,
             }}>
                 {/* Background Components */}

@@ -25,11 +25,9 @@ const useFacebookAuth = () => {
         setIsFacebookLoading(true);
         
         try {
-            console.log('Facebook token received:', accessToken?.substring(0, 20) + '...');
             
             // Get CSRF token for security
             const csrfToken = await fetchCsrfToken();
-            console.log('CSRF Token fetched:', csrfToken?.substring(0, 10) + '...');
             
             if (!csrfToken) {
                 throw new Error('Failed to fetch CSRF token');
@@ -64,8 +62,6 @@ const useFacebookAuth = () => {
                 throw new Error(response.data.message || "Login failed");
             }
         } catch (error) {
-            console.error("Facebook login error:", error);
-            console.error("Response data:", error.response?.data);
             
             showToast({
                 title: "Facebook Login Failed",

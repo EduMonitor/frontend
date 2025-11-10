@@ -22,6 +22,7 @@ import PrivateRoute from "./utils/hooks/keys/protected.key";
 import Dashboard from "./controllers/dashboard/dashboard.dashbord";
 import Profiles from "./controllers/profiles/profiles";
 import MonitoringFeedPages from "./controllers/scappers/monitor.scrapers";
+import MonitoringFeedPage from "./controllers/scappers/MonitorFeed.scapers";
 
 // Single optimized loading component for all routes
 const LoadingFallback = memo(() => (
@@ -63,6 +64,7 @@ const App = memo(() => {
             <Route path={AdminRoutes.dashboard} element={<PrivateRoute element={<Dashboard/>} allowedRoles={['admin','user','analys','view']}/> }/>
             <Route path={AdminRoutes.profiles} element={<PrivateRoute element={<Profiles/>} allowedRoles={['admin','user','analys','view']}/> }/>
             <Route path={AdminRoutes.Monitoring.Feed} element={<PrivateRoute element={<MonitoringFeedPages/>} allowedRoles={['admin','user','analys','view']}/> }/>
+            <Route path={AdminRoutes.Monitoring.Keywords} element={<PrivateRoute element={<MonitoringFeedPage/>} allowedRoles={['admin','user','analys','view']}/> }/>
 
           </Route>
         </Routes>

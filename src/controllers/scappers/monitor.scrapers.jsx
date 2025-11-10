@@ -1,5 +1,5 @@
 // src/components/MonitoringFeedPages.js
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Paper,
@@ -18,7 +18,9 @@ import {
   Typography,
   Tabs,
   Tab,
-  Badge
+  Badge,
+  LinearProgress,
+  IconButton
 } from '@mui/material';
 import { FaSearch, FaTimes } from 'react-icons/fa';
 import SearchResults from './result_scraper';
@@ -48,9 +50,22 @@ const BROWSERS = [
   { value: 'edge', label: 'Edge' }
 ];
 
+const LANGUAGES = [
+  { value: '', label: 'Any Language' },
+  { value: 'fr', label: 'French' },
+  { value: 'en', label: 'English' },
+  { value: 'mos', label: 'Mossi (Local)' }
+];
+
+const COUNTRIES = [
+  { value: '', label: 'Any Country' },
+  { value: 'BF', label: 'Burkina Faso' },
+  { value: 'US', label: 'United States' },
+  { value: 'FR', label: 'France' }
+];
+
 const MonitoringFeedPages = () => {
   const axiosPrivate = useAxiosPrivate();
-  
   const [searchParams, setSearchParams] = useState({
     query: '',
     platforms: ['facebook', 'twitter', 'linkedin'],
@@ -58,22 +73,25 @@ const MonitoringFeedPages = () => {
     scrapeDetails: true,
     timeFilter: 'any',
     browser: 'auto',
-    headless: true
+    headless: true,
+    language: '',
+    country: 'BF'
   });
   
   const [searchResults, setSearchResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [progress, setProgress] = useState({ current: 0, total: 0, message: '' });
   const [activeTab, setActiveTab] = useState(0);
 
-  const handleInputChange = (field, value) => {
+  const handleInputChange = useCallback((field, value) => {
     setSearchParams(prev => ({
       ...prev,
       [field]: value
     }));
-  };
+  }, []);
 
-  const handlePlatformToggle = (platformId) => {
+  const handlePlatformToggle = useCallback((platformId) => {
     setSearchParams(prev => {
       const newPlatforms = prev.platforms.includes(platformId)
         ? prev.platforms.filter(p => p !== platformId)
@@ -84,9 +102,9 @@ const MonitoringFeedPages = () => {
         platforms: newPlatforms
       };
     });
-  };
+  }, []);
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     
     if (!searchParams.query.trim()) {
@@ -102,45 +120,53 @@ const MonitoringFeedPages = () => {
     setLoading(true);
     setError(null);
     setSearchResults(null);
+    setProgress({ current: 0, total: searchParams.platforms.length, message: 'Starting search...' });
 
     try {
-      // Build query parameters
-      const params = {
+      // Build query string with all parameters (matching your backend routes)
+      const queryParams = new URLSearchParams({
         query: searchParams.query,
         platforms: searchParams.platforms.join(','),
-        max_results: searchParams.maxResults,
-        scrape_details: searchParams.scrapeDetails,
+        max_results: searchParams.maxResults.toString(),
+        scrape_details: searchParams.scrapeDetails.toString(),
         time_filter: searchParams.timeFilter,
         browser: searchParams.browser,
-        headless: searchParams.headless
-      };
+        headless: searchParams.headless.toString(),
+        ...(searchParams.language && { language: searchParams.language }),
+        ...(searchParams.country && { country: searchParams.country })
+      });
 
-      const response = await axiosPrivate.get('/api/v2/osint/search', { params });
+      // Use GET request to match your backend route
+      const response = await axiosPrivate.get(`/api/v2/osint/search?${queryParams}`);
 
       setSearchResults(response.data);
+      setProgress({ current: searchParams.platforms.length, total: searchParams.platforms.length, message: 'Search completed!' });
       setActiveTab(1); // Switch to results tab
     } catch (err) {
-      const errorMessage = err.response?.data?.message || err.message || 'Search failed';
-      setError(`Search failed: ${errorMessage}`);
       console.error('Search error:', err);
+      setError(err.response?.data?.message || err.message || 'An error occurred during search');
     } finally {
       setLoading(false);
     }
-  };
+  }, [axiosPrivate, searchParams]);
 
-  const handleSearchClick = () => {
-    const params = new URLSearchParams({
-      query: searchParams.query,
-      platforms: searchParams.platforms.join(','),
-      max_results: searchParams.maxResults.toString(),
-      scrape_details: searchParams.scrapeDetails.toString(),
-      time_filter: searchParams.timeFilter,
-      browser: searchParams.browser,
-      headless: searchParams.headless.toString()
-    }).toString();
-
-    window.open(`/api/v2/osint/search?${params}`, '_blank');
-  };
+  const handleReset = useCallback(() => {
+    setSearchParams({
+      query: '',
+      platforms: ['facebook', 'twitter', 'linkedin'],
+      maxResults: 10,
+      scrapeDetails: true,
+      timeFilter: 'any',
+      browser: 'auto',
+      headless: true,
+      language: '',
+      country: 'BF'
+    });
+    setSearchResults(null);
+    setError(null);
+    setProgress({ current: 0, total: 0, message: '' });
+    setActiveTab(0);
+  }, []);
 
   const totalResults = searchResults?.results 
     ? Object.values(searchResults.results).reduce((sum, platformResults) => sum + platformResults.length, 0)
@@ -165,6 +191,7 @@ const MonitoringFeedPages = () => {
                 placeholder="Enter keywords to search for..."
                 variant="outlined"
                 required
+                disabled={loading}
               />
             </Grid>
 
@@ -181,6 +208,7 @@ const MonitoringFeedPages = () => {
                     onClick={() => handlePlatformToggle(platform.id)}
                     color={searchParams.platforms.includes(platform.id) ? 'primary' : 'default'}
                     variant={searchParams.platforms.includes(platform.id) ? 'filled' : 'outlined'}
+                    disabled={loading}
                     sx={{
                       backgroundColor: searchParams.platforms.includes(platform.id) 
                         ? `${platform.color} !important` 
@@ -194,7 +222,7 @@ const MonitoringFeedPages = () => {
 
             {/* Filters - First Row */}
             <Grid item xs={12} md={3}>
-              <FormControl fullWidth variant="outlined">
+              <FormControl fullWidth variant="outlined" disabled={loading}>
                 <InputLabel>Time Filter</InputLabel>
                 <Select
                   value={searchParams.timeFilter}
@@ -219,11 +247,47 @@ const MonitoringFeedPages = () => {
                 onChange={(e) => handleInputChange('maxResults', parseInt(e.target.value) || 1)}
                 inputProps={{ min: 1, max: 50 }}
                 variant="outlined"
+                disabled={loading}
               />
             </Grid>
 
             <Grid item xs={12} md={3}>
-              <FormControl fullWidth variant="outlined">
+              <FormControl fullWidth variant="outlined" disabled={loading}>
+                <InputLabel>Language</InputLabel>
+                <Select
+                  value={searchParams.language}
+                  onChange={(e) => handleInputChange('language', e.target.value)}
+                  label="Language"
+                >
+                  {LANGUAGES.map(lang => (
+                    <MenuItem key={lang.value} value={lang.value}>
+                      {lang.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth variant="outlined" disabled={loading}>
+                <InputLabel>Country</InputLabel>
+                <Select
+                  value={searchParams.country}
+                  onChange={(e) => handleInputChange('country', e.target.value)}
+                  label="Country"
+                >
+                  {COUNTRIES.map(country => (
+                    <MenuItem key={country.value} value={country.value}>
+                      {country.label}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Browser and Options */}
+            <Grid item xs={12} md={3}>
+              <FormControl fullWidth variant="outlined" disabled={loading}>
                 <InputLabel>Browser</InputLabel>
                 <Select
                   value={searchParams.browser}
@@ -245,15 +309,20 @@ const MonitoringFeedPages = () => {
                   <Checkbox
                     checked={searchParams.scrapeDetails}
                     onChange={(e) => handleInputChange('scrapeDetails', e.target.checked)}
+                    disabled={loading}
                   />
                 }
                 label="Scrape Details"
               />
+            </Grid>
+
+            <Grid item xs={12} md={3}>
               <FormControlLabel
                 control={
                   <Checkbox
                     checked={searchParams.headless}
                     onChange={(e) => handleInputChange('headless', e.target.checked)}
+                    disabled={loading}
                   />
                 }
                 label="Headless Mode"
@@ -262,32 +331,38 @@ const MonitoringFeedPages = () => {
 
             {/* Submit Button */}
             <Grid item xs={12}>
-              <Button
-                fullWidth
-                type="submit"
-                variant="contained"
-                size="large"
-                startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <FaSearch />}
-                disabled={loading}
-                sx={{ py: 1.5 }}
-              >
-                {loading ? 'Searching...' : 'Launch Intelligence Operation'}
-              </Button>
+              <Box sx={{ display: 'flex', gap: 2 }}>
+                <Button
+                  fullWidth
+                  type="submit"
+                  variant="contained"
+                  size="large"
+                  startIcon={loading ? <CircularProgress size={20} color="inherit" /> : <FaSearch />}
+                  disabled={loading}
+                  sx={{ py: 1.5 }}
+                >
+                  {loading ? 'Gathering Intelligence...' : 'Launch Intelligence Operation'}
+                </Button>
+              </Box>
             </Grid>
           </Grid>
         </form>
 
-        {/* Direct API Call Button */}
-        <Box sx={{ mt: 2, textAlign: 'center' }}>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={handleSearchClick}
-            disabled={!searchParams.query.trim() || loading}
-          >
-            Test Direct API Call
-          </Button>
-        </Box>
+        {/* Progress Indicator */}
+        {loading && (
+          <Box sx={{ mt: 2 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+              <LinearProgress 
+                variant={progress.total > 0 ? "determinate" : "indeterminate"} 
+                value={progress.total > 0 ? (progress.current / progress.total) * 100 : 0}
+                sx={{ flex: 1 }}
+              />
+            </Box>
+            <Typography variant="caption" display="block" sx={{ textAlign: 'center' }}>
+              {progress.message || 'Processing...'}
+            </Typography>
+          </Box>
+        )}
       </Paper>
 
       {/* Error Display */}
@@ -295,14 +370,22 @@ const MonitoringFeedPages = () => {
         <Alert 
           severity="error" 
           sx={{ mb: 3 }}
-          onClose={() => setError(null)}
+          action={
+            <IconButton
+              color="inherit"
+              size="small"
+              onClick={() => setError(null)}
+            >
+              <FaTimes />
+            </IconButton>
+          }
         >
           {error}
         </Alert>
       )}
 
       {/* Results Tabs */}
-      {(searchResults || loading) && (
+      {searchResults && (
         <Paper sx={{ mb: 3 }}>
           <Tabs
             value={activeTab}
@@ -333,18 +416,11 @@ const MonitoringFeedPages = () => {
           </Tabs>
 
           <Box sx={{ p: 3 }}>
-            {loading ? (
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <CircularProgress />
-                <Typography sx={{ mt: 2 }}>Gathering intelligence...</Typography>
-              </Box>
-            ) : (
-              <SearchResults
-                results={searchResults} 
-                activeTab={activeTab}
-                platforms={Object.keys(searchResults?.results || {})}
-              />
-            )}
+            <SearchResults
+              results={searchResults} 
+              activeTab={activeTab}
+              platforms={Object.keys(searchResults?.results || {})}
+            />
           </Box>
         </Paper>
       )}
