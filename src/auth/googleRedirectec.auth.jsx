@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Box, Container, Typography } from "@mui/material";
 import { FaCircleCheck, FaCircleXmark } from "react-icons/fa6";
 import { FaSync } from "react-icons/fa";
+import useAuth from "../utils/hooks/contexts/useAth.contexts";
+import useToast from "../components/toast/toast.toast";
 
 // Modern 3D animated text component
 const AnimatedTitle = ({ text, success }) => (
@@ -213,50 +215,117 @@ const LoadingSpinner = () => (
 const GoogleAuthRedirect = React.memo(() => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [status, setStatus] = useState("loading"); // loading, success, error
-  const [message, setMessage] = useState("Authenticating...");
+  const { setAuth } = useAuth();
+  const { showToast, ToastComponent } = useToast();
+  const [status, setStatus] = useState("loading");
+  const [message, setMessage] = useState("Authenticating with Google...");
 
   useEffect(() => {
     const handleAuth = async () => {
       try {
         const searchParams = new URLSearchParams(location.search);
         const loginStatus = searchParams.get("login");
+        const token = searchParams.get("token");
         const error = searchParams.get("error");
 
-        if (loginStatus === "success") {
-          setStatus("success");
-          setMessage("Authentication Successful!");
-          
-          // Redirect to dashboard after animation
-          setTimeout(() => {
-            navigate("/ai/dashboard", { replace: true });
-          }, 2000);
-        } else if (error) {
+        // Handle error case
+        if (loginStatus === "error" || error) {
+          console.error("❌ Google authentication failed:", error);
           setStatus("error");
+          
           const errorMessages = {
-            invalid_state: "Security validation failed. Please try again.",
-            state_reused: "This login link has already been used.",
-            authentication_failed: "Authentication failed. Please try again.",
-            unexpected_error: "An unexpected error occurred.",
+            "Email permission is required": "Google email access is required to continue",
+            "Please use a verified Google email": "Your Google email is not verified",
+            "Authentication failed": "Unable to authenticate with Google",
+            "Session configuration error": "Session error. Please try again.",
           };
-          setMessage(errorMessages[error] || "Authentication failed");
+          
+          const errorMsg = errorMessages[error] || error || "Authentication failed";
+          setMessage(errorMsg);
+          
+          showToast({
+            title: "Google Login Failed",
+            description: errorMsg,
+            status: "error"
+          });
           
           // Redirect to login after showing error
           setTimeout(() => {
             navigate("/auth/signin", { replace: true });
           }, 3000);
-        } else {
-          // No parameters, redirect to login
-          setStatus("error");
-          setMessage("Invalid authentication callback");
-          setTimeout(() => {
-            navigate("/auth/signin", { replace: true });
-          }, 2000);
+          return;
         }
-      } catch (err) {
-        console.error("Auth redirect error:", err);
+
+        // Handle success case
+        if (loginStatus === "success" && token) {
+          console.log("🔄 Processing Google login success...");
+          
+          try {
+            // Decode JWT token to get user info
+            const tokenParts = token.split(".");
+            if (tokenParts.length !== 3) {
+              throw new Error("Invalid token format");
+            }
+            
+            const payload = JSON.parse(atob(tokenParts[1]));
+            console.log("✅ Token decoded successfully:", payload);
+            
+            // Update UI
+            setStatus("success");
+            setMessage("Successfully authenticated with Google!");
+            
+            // Set authentication state
+            setAuth({
+              accessToken: token,
+              role: payload.role || "user",
+              uuid: payload.uuid,
+              firstName: payload.firstName || "User",
+              email: payload.email
+            });
+            
+            // Persist login
+            localStorage.setItem("persist", "true");
+            
+            showToast({
+              title: "Welcome Back!",
+              description: `Successfully logged in as ${payload.firstName || "User"}`,
+              status: "success"
+            });
+            
+            console.log("🎉 Google login successful! Redirecting to dashboard...");
+            
+            // Redirect to dashboard after animation
+            setTimeout(() => {
+              navigate("/ai/dashboard", { replace: true });
+            }, 2000);
+            
+          } catch (decodeError) {
+            console.error("Failed to decode token:", decodeError);
+            throw new Error("Invalid authentication token received");
+          }
+          return;
+        }
+
+        // No valid parameters found
+        console.warn("⚠️ No valid authentication parameters found");
         setStatus("error");
-        setMessage("An error occurred during authentication");
+        setMessage("Invalid authentication callback");
+        
+        setTimeout(() => {
+          navigate("/auth/signin", { replace: true });
+        }, 2000);
+        
+      } catch (err) {
+        console.error("❌ Auth redirect error:", err);
+        setStatus("error");
+        setMessage(err.message || "An error occurred during authentication");
+        
+        showToast({
+          title: "Authentication Error",
+          description: err.message || "An unexpected error occurred",
+          status: "error"
+        });
+        
         setTimeout(() => {
           navigate("/auth/signin", { replace: true });
         }, 2000);
@@ -264,8 +333,10 @@ const GoogleAuthRedirect = React.memo(() => {
     };
 
     handleAuth();
-  }, [location.search, navigate]);
+  }, [location.search, navigate, setAuth, showToast]);
 
+  // ... Keep all your existing JSX return (animation components) ...
+  
   return (
     <Box
       sx={{
@@ -290,13 +361,7 @@ const GoogleAuthRedirect = React.memo(() => {
     >
       <ParticleBackground success={status === "success"} />
 
-      <Container
-        maxWidth="sm"
-        sx={{
-          position: "relative",
-          zIndex: 1,
-        }}
-      >
+      <Container maxWidth="sm" sx={{ position: "relative", zIndex: 1 }}>
         <Box
           sx={{
             backgroundColor: "rgba(255, 255, 255, 0.95)",
@@ -325,12 +390,7 @@ const GoogleAuthRedirect = React.memo(() => {
             },
           }}
         >
-          <Box
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            gap={3}
-          >
+          <Box display="flex" flexDirection="column" alignItems="center" gap={3}>
             {/* Icon */}
             <Box>
               {status === "loading" && <LoadingSpinner />}
@@ -359,14 +419,8 @@ const GoogleAuthRedirect = React.memo(() => {
                 maxWidth: 400,
                 animation: "fadeIn 0.8s ease-out 0.5s backwards",
                 "@keyframes fadeIn": {
-                  "0%": {
-                    opacity: 0,
-                    transform: "translateY(10px)",
-                  },
-                  "100%": {
-                    opacity: 1,
-                    transform: "translateY(0)",
-                  },
+                  "0%": { opacity: 0, transform: "translateY(10px)" },
+                  "100%": { opacity: 1, transform: "translateY(0)" },
                 },
               }}
             >
@@ -401,6 +455,7 @@ const GoogleAuthRedirect = React.memo(() => {
             )}
           </Box>
         </Box>
+        {ToastComponent}
       </Container>
     </Box>
   );
@@ -408,3 +463,4 @@ const GoogleAuthRedirect = React.memo(() => {
 
 GoogleAuthRedirect.displayName = "GoogleAuthRedirect";
 export default GoogleAuthRedirect;
+

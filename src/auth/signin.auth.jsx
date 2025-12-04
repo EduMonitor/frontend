@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import Box from "@mui/material/Box"
 import Button from "@mui/material/Button"
 import Typography from "@mui/material/Typography"
@@ -34,7 +34,7 @@ import { axiosPrivate } from '../utils/hooks/instance/axios.instance';
 import useAuth from '../utils/hooks/contexts/useAth.contexts';
 import { fetchCsrfToken } from '../utils/hooks/token/csrf.token';
 import useFacebookAuth from '../utils/functions/handlFacebook-login';
-import { handleGoogleSignIn } from '../utils/functions/handleGoogle-login';
+import { handleGoogleSignIn, handleGoogleCallback } from '../utils/functions/handleGoogle-login';
 
 const SignInAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -51,6 +51,24 @@ const SignInAuth = () => {
   const theme = useAuthTheme();
   const { isFacebookLoading, handleFacebookLogin, FacebookToastComponent } = useFacebookAuth();
 
+  // Handle Google OAuth callback on component mount
+  useEffect(() => {
+    const processGoogleCallback = async () => {
+      const wasCallback = await handleGoogleCallback(
+        setAuth, 
+        navigate, 
+        showToast, 
+        setIsLoading
+      );
+      
+      if (wasCallback) {
+        console.log('Google callback processed');
+      }
+    };
+
+    processGoogleCallback();
+  }, [setAuth, navigate, showToast]);
+
   const handleInputChange = useCallback((event) => {
     const { name, type, value, checked } = event.target;
     const sanitizedValue = type === "checkbox" ? checked : DOMPurify.sanitize(value);
@@ -63,8 +81,6 @@ const SignInAuth = () => {
       [name]: undefined
     }));
   }, []);
-
-
 
   const handleLogin = useCallback(async (e) => {
     e.preventDefault();
@@ -110,7 +126,6 @@ const SignInAuth = () => {
             status: "info"
           });
 
-          // Navigate to 2FA page with uuid in URL
           const redirectPath = result.redirectUrl || `/auth/verify-factor/${result.uuid}`;
 
           navigate(redirectPath, {
@@ -147,12 +162,11 @@ const SignInAuth = () => {
       if (error.response && error.response.data.detail) {
         const apiError = error.response.data.detail;
         const statuCode = error.response.data.detail.status === 401
-        // Handle field-specific errors
+        
         if (apiError.errors) {
           setErrors(apiError.errors);
         }
 
-        // Show error message
         showToast({
           title: !statuCode && apiError.status === "locked" ? "Account Locked" : "Login Failed",
           description: apiError.message,
@@ -179,8 +193,6 @@ const SignInAuth = () => {
       setIsLoading(false);
     }
   }, [signinSchema, values, setAuth, navigate, showToast]);
-
-
 
   const renderedFormInputs = useMemo(() => (
     <Grid container spacing={2}>
@@ -216,7 +228,6 @@ const SignInAuth = () => {
         justifyContent: 'center',
       }}
     >
-      {/* Background Components */}
       <FloatingElements aiFeatures={aiFeatures} />
       <AnimatedGrid />
 
@@ -232,7 +243,7 @@ const SignInAuth = () => {
             }}
           >
             <BrandingSection aiFeatures={aiFeatures} theme={theme} />
-            {/* Right Side - Login Form */}
+            
             <Slide direction="left" in timeout={1000}>
               <Box sx={{ flex: 1, maxWidth: 450, width: '100%' }}>
                 <CardBox>
@@ -303,6 +314,7 @@ const SignInAuth = () => {
                         Forgotten Password ?
                       </Link>
                     </Box>
+                    
                     <Button
                       fullWidth
                       variant="contained"
@@ -361,6 +373,7 @@ const SignInAuth = () => {
                       fullWidth
                       variant="outlined"
                       onClick={() => handleGoogleSignIn(setIsLoading)}
+                      disabled={isLoading}
                       startIcon={<FaGoogle />}
                       sx={{
                         borderRadius: 2,
@@ -379,7 +392,7 @@ const SignInAuth = () => {
                       fullWidth
                       variant="outlined"
                       onClick={handleFacebookLogin}
-                      disabled={isFacebookLoading}
+                      disabled={isFacebookLoading || isLoading}
                       startIcon={<FaFacebook />}
                       sx={{
                         borderRadius: 2,
@@ -425,7 +438,6 @@ const SignInAuth = () => {
         </Fade>
       </Container>
 
-      {/* Loading Backdrop */}
       <SubmittingSpinner isLoading={isLoading || isFacebookLoading} />
       {ToastComponent}
       {FacebookToastComponent}

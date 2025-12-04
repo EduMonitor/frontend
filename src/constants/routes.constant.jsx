@@ -9,6 +9,7 @@ export const AuthRoutes = {
   verifyEmail: "/auth/verify/:uuid",
   changePassword: "/auth/change-password",
   profile: "/auth/profile",
+  googleRedirect: "/auth/google/callback",
   logout: "/auth/logout",
 };
 

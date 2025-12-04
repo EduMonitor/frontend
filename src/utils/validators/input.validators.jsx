@@ -25,6 +25,14 @@ export const forgotValidator = () => {
             Yup.string().required("Email is empty").email("Invalide email format"),
     });
 }
+export const keywordValidator = () => {
+    return Yup.object().shape({
+        query:
+            Yup.string().required("This field couldn't be empty"),
+        
+    });
+}
+
 export const signUpValidator = () => {
     return Yup.object().shape({
         firstName: Yup.string().required("First Name is empty"),

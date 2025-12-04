@@ -17,12 +17,12 @@ const ForbiddenPage = lazy(() => import("./pages/errors/403.errors"));
 import ThemeToggleButton from "./components/theme/toggle.theme";
 import { Spinner } from "./components/spinner/spinners.spinners";
 import ScrollToTopButton from "./components/theme/Topdown.theme";
-import ControllerLayout from "./controllers/controllersLayoute";
+import ControllerLayout from "./features/featuresLayoute";
 import PrivateRoute from "./utils/hooks/keys/protected.key";
-import Dashboard from "./controllers/dashboard/dashboard.dashbord";
-import Profiles from "./controllers/profiles/profiles";
-import MonitoringFeedPages from "./controllers/scappers/monitor.scrapers";
-import MonitoringFeedPage from "./controllers/scappers/MonitorFeed.scapers";
+import Dashboard from "./features/dashboard/dashboard.dashbord";
+import Profiles from "./features/profiles/profiles";
+import MonitoringFeedPage from "./features/scappers/MonitorFeed.scapers";
+import GoogleAuthRedirect from "./auth/googleRedirectec.auth";
 
 // Single optimized loading component for all routes
 const LoadingFallback = memo(() => (
@@ -54,6 +54,7 @@ const App = memo(() => {
           <Route path={AuthRoutes.resetPassword} element={<ResetPages />} />
           <Route path={AuthRoutes.emailVerify} element={<EmailVerification />} />
           <Route path={AuthRoutes.twoFactor} element={<TwoFactorAuth />} />
+          <Route path={AuthRoutes.googleRedirect} element={<GoogleAuthRedirect />} />
 
           {/* Error Routes */}
           <Route path={PagesRoutes.errorPages.Error404} element={<NotFoundPage />} />
@@ -63,8 +64,8 @@ const App = memo(() => {
           <Route path={"/ai"} element={<ControllerLayout/>}>
             <Route path={AdminRoutes.dashboard} element={<PrivateRoute element={<Dashboard/>} allowedRoles={['admin','user','analys','view']}/> }/>
             <Route path={AdminRoutes.profiles} element={<PrivateRoute element={<Profiles/>} allowedRoles={['admin','user','analys','view']}/> }/>
-            <Route path={AdminRoutes.Monitoring.Feed} element={<PrivateRoute element={<MonitoringFeedPages/>} allowedRoles={['admin','user','analys','view']}/> }/>
-            <Route path={AdminRoutes.Monitoring.Keywords} element={<PrivateRoute element={<MonitoringFeedPage/>} allowedRoles={['admin','user','analys','view']}/> }/>
+            <Route path={AdminRoutes.Monitoring.Feed} element={<PrivateRoute element={<MonitoringFeedPage/>} allowedRoles={['admin','user','analys','view']}/> }/>
+            {/* <Route path={AdminRoutes.Monitoring.Keywords} element={<PrivateRoute element={<MonitoringFeedPages/>} allowedRoles={['admin','user','analys','view']}/> }/> */}
 
           </Route>
         </Routes>

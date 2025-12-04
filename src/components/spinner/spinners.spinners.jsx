@@ -1,46 +1,26 @@
 import Backdrop from "@mui/material/Backdrop";
 import CircularProgress from "@mui/material/CircularProgress";
-import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
-import { appConfig } from "../../constants/string.constants";
 
 export const Spinner = ({
   isLoading = true,
-  appName = appConfig.AppName,
-  title = appConfig.title,
-  subtitle = appConfig.subtitle,
   variant = "default",
-  showAppName = true
+  size = 60
 }) => {
 
-  // Lightweight config
-  const getConfig = () => {
+  // Color config without purple
+  const getColor = () => {
     switch (variant) {
       case "submitting":
-        return {
-          title: title || "Processing Request...",
-          subtitle: subtitle || "Analyzing data patterns",
-          color: "#4caf50",
-          size: 50
-        };
+        return "#4caf50"; // Green
       case "loading":
-        return {
-          title: title || "Loading Interface...",
-          subtitle: subtitle || "Preparing your workspace",
-          color: "#2196f3",
-          size: 60
-        };
+        return "#2196f3"; // Blue
       default:
-        return {
-          title: title || "Initializing AI Systems...",
-          subtitle: subtitle || "Connecting to neural networks",
-          color: "#64b5f6",
-          size: 60
-        };
+        return "#2196f3"; // Blue
     }
   };
 
-  const config = getConfig();
+  const color = getColor();
 
   return (
     <Backdrop
@@ -53,53 +33,14 @@ export const Spinner = ({
       }}
       open={isLoading}
     >
-      {/* Main container with proper spacing */}
+      {/* Main container */}
       <Box sx={{
         textAlign: 'center',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column',
-        alignItems: 'center',
-        animation: 'float 3s ease-in-out infinite',
-        '@keyframes float': {
-          '0%, 100%': { transform: 'translateY(0px)' },
-          '50%': { transform: 'translateY(-10px)' }
-        }
+        alignItems: 'center'
       }}>
-
-        {/* App Name */}
-        {showAppName && (
-          <Typography
-            variant="h4"
-            component="div"
-            sx={{
-              background: 'linear-gradient(45deg, #fff 30%, #64b5f6 50%, #fff 70%)',
-              backgroundSize: '200px 100%',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              fontWeight: 700,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              mb: 4,
-              animation: 'pulse-shimmer 3s ease-in-out infinite',
-              '@keyframes pulse-shimmer': {
-                '0%, 100%': {
-                  opacity: 1,
-                  transform: 'scale(1)',
-                  backgroundPosition: '-200px 0'
-                },
-                '50%': {
-                  opacity: 0.8,
-                  transform: 'scale(1.05)',
-                  backgroundPosition: 'calc(200px + 100%) 0'
-                }
-              }
-            }}
-          >
-            {appName}
-          </Typography>
-        )}
 
         {/* Spinner container with decorative elements */}
         <Box sx={{
@@ -107,7 +48,6 @@ export const Spinner = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          mb: 4,
           width: '160px',
           height: '160px'
         }}>
@@ -117,7 +57,7 @@ export const Spinner = ({
             position: 'absolute',
             width: '140px',
             height: '140px',
-            border: '1px solid rgba(100, 181, 246, 0.2)',
+            border: `1px solid ${color}33`,
             borderRadius: '50%',
             top: '50%',
             left: '50%',
@@ -150,11 +90,11 @@ export const Spinner = ({
           <Box sx={{ position: 'relative', display: 'inline-flex' }}>
             {/* Main spinner */}
             <CircularProgress
-              size={config.size}
+              size={size}
               thickness={3}
               sx={{
-                color: config.color,
-                filter: 'drop-shadow(0 0 15px rgba(100, 181, 246, 0.4))',
+                color: color,
+                filter: `drop-shadow(0 0 15px ${color}66)`,
                 '& .MuiCircularProgress-circle': {
                   strokeLinecap: 'round'
                 }
@@ -163,7 +103,7 @@ export const Spinner = ({
 
             {/* Inner decorative spinner */}
             <CircularProgress
-              size={config.size - 20}
+              size={size - 20}
               thickness={2}
               variant="determinate"
               value={30}
@@ -183,69 +123,6 @@ export const Spinner = ({
                 }
               }}
             />
-          </Box>
-        </Box>
-
-        {/* Loading text container */}
-        <Box sx={{ minHeight: '80px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          {/* Loading title */}
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 500,
-              mb: 1,
-              color: 'rgba(255, 255, 255, 0.9)',
-              letterSpacing: '0.02em'
-            }}
-          >
-            {config.title}
-          </Typography>
-
-          {/* Subtitle with shimmer */}
-          <Typography
-            variant="body2"
-            sx={{
-              background: 'linear-gradient(90deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0.9) 100%)',
-              backgroundSize: '200% 100%',
-              backgroundClip: 'text',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              animation: 'shimmer 2s ease-in-out infinite',
-              mb: 2,
-              '@keyframes shimmer': {
-                '0%': { backgroundPosition: '-200px 0' },
-                '100%': { backgroundPosition: 'calc(200px + 100%) 0' }
-              }
-            }}
-          >
-            {config.subtitle}
-          </Typography>
-
-          {/* Animated dots */}
-          <Box sx={{ display: 'flex', justifyContent: 'center', gap: 0.8 }}>
-            {[0, 1, 2].map((index) => (
-              <Box
-                key={index}
-                sx={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: '50%',
-                  backgroundColor: config.color,
-                  animation: 'dot-bounce 1.4s ease-in-out infinite',
-                  animationDelay: `${index * 0.2}s`,
-                  '@keyframes dot-bounce': {
-                    '0%, 80%, 100%': {
-                      opacity: 0.3,
-                      transform: 'scale(0.8)'
-                    },
-                    '40%': {
-                      opacity: 1,
-                      transform: 'scale(1)'
-                    }
-                  }
-                }}
-              />
-            ))}
           </Box>
         </Box>
       </Box>

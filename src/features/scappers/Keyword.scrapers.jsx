@@ -23,46 +23,14 @@ import {
   IconButton
 } from '@mui/material';
 import { FaSearch, FaTimes } from 'react-icons/fa';
+import DOMPurify from 'dompurify'
 import SearchResults from './result_scraper';
 import ServiceStatus from './status.scraper';
+
 import useAxiosPrivate from '../../utils/hooks/instance/axiosprivate.instance';
+import { BROWSERS, COUNTRIES, LANGUAGES, PLATFORMS, TIME_FILTERS } from '../../constants/Params.contants';
+import InputField from '../../components/forms/input.forms';
 
-const PLATFORMS = [
-  { id: 'facebook', label: 'Facebook', color: '#1877f2' },
-  { id: 'twitter', label: 'Twitter/X', color: '#1da1f2' },
-  { id: 'linkedin', label: 'LinkedIn', color: '#0a66c2' },
-  { id: 'instagram', label: 'Instagram', color: '#e4405f' },
-  { id: 'youtube', label: 'YouTube', color: '#ff0000' },
-  { id: 'tiktok', label: 'TikTok', color: '#000000' }
-];
-
-const TIME_FILTERS = [
-  { value: 'any', label: 'Any Time' },
-  { value: 'day', label: 'Past 24 Hours' },
-  { value: 'week', label: 'Past Week' },
-  { value: 'month', label: 'Past Month' }
-];
-
-const BROWSERS = [
-  { value: 'auto', label: 'Auto Detection' },
-  { value: 'chrome', label: 'Chrome' },
-  { value: 'firefox', label: 'Firefox' },
-  { value: 'edge', label: 'Edge' }
-];
-
-const LANGUAGES = [
-  { value: '', label: 'Any Language' },
-  { value: 'fr', label: 'French' },
-  { value: 'en', label: 'English' },
-  { value: 'mos', label: 'Mossi (Local)' }
-];
-
-const COUNTRIES = [
-  { value: '', label: 'Any Country' },
-  { value: 'BF', label: 'Burkina Faso' },
-  { value: 'US', label: 'United States' },
-  { value: 'FR', label: 'France' }
-];
 
 const MonitoringFeedPages = () => {
   const axiosPrivate = useAxiosPrivate();
@@ -77,17 +45,26 @@ const MonitoringFeedPages = () => {
     language: '',
     country: 'BF'
   });
-  
+
   const [searchResults, setSearchResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [progress, setProgress] = useState({ current: 0, total: 0, message: '' });
   const [activeTab, setActiveTab] = useState(0);
 
-  const handleInputChange = useCallback((field, value) => {
-    setSearchParams(prev => ({
-      ...prev,
-      [field]: value
+  // const handleInputChange = useCallback((field, value) => {
+  //   setSearchParams(prev => ({
+  //     ...prev,
+  //     [field]: value
+  //   }));
+  // }, []);
+
+  const handleInputChange = useCallback((event) => {
+    const { name, value } = event.target;
+    const sanitizedValue = DOMPurify.sanitize(value);
+    setSearchParams((prevValues) => ({
+      ...prevValues,
+      [name]: sanitizedValue
     }));
   }, []);
 
@@ -96,7 +73,7 @@ const MonitoringFeedPages = () => {
       const newPlatforms = prev.platforms.includes(platformId)
         ? prev.platforms.filter(p => p !== platformId)
         : [...prev.platforms, platformId];
-      
+
       return {
         ...prev,
         platforms: newPlatforms
@@ -106,7 +83,7 @@ const MonitoringFeedPages = () => {
 
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
-    
+
     if (!searchParams.query.trim()) {
       setError('Please enter a search query');
       return;
@@ -150,6 +127,7 @@ const MonitoringFeedPages = () => {
     }
   }, [axiosPrivate, searchParams]);
 
+  // eslint-disable-next-line no-unused-vars
   const handleReset = useCallback(() => {
     setSearchParams({
       query: '',
@@ -168,7 +146,7 @@ const MonitoringFeedPages = () => {
     setActiveTab(0);
   }, []);
 
-  const totalResults = searchResults?.results 
+  const totalResults = searchResults?.results
     ? Object.values(searchResults.results).reduce((sum, platformResults) => sum + platformResults.length, 0)
     : 0;
 
@@ -182,21 +160,23 @@ const MonitoringFeedPages = () => {
         <form onSubmit={handleSubmit}>
           <Grid container spacing={3}>
             {/* Search Query */}
-            <Grid item xs={12}>
-              <TextField
+            <Grid size={{ md: 12, sm: 12, xs: 12 }}>
+
+              <InputField
                 fullWidth
                 label="Search Query"
                 value={searchParams.query}
-                onChange={(e) => handleInputChange('query', e.target.value)}
+                name={"query"}
+                onChange={handleInputChange}
                 placeholder="Enter keywords to search for..."
-                variant="outlined"
                 required
                 disabled={loading}
               />
             </Grid>
 
             {/* Platforms Selection */}
-            <Grid item xs={12}>
+            <Grid size={{ md: 12, sm: 12, xs: 12 }}>
+
               <Typography variant="subtitle2" gutterBottom>
                 Select Platforms:
               </Typography>
@@ -210,8 +190,8 @@ const MonitoringFeedPages = () => {
                     variant={searchParams.platforms.includes(platform.id) ? 'filled' : 'outlined'}
                     disabled={loading}
                     sx={{
-                      backgroundColor: searchParams.platforms.includes(platform.id) 
-                        ? `${platform.color} !important` 
+                      backgroundColor: searchParams.platforms.includes(platform.id)
+                        ? `${platform.color} !important`
                         : undefined,
                       color: searchParams.platforms.includes(platform.id) ? 'white !important' : undefined
                     }}
@@ -221,7 +201,8 @@ const MonitoringFeedPages = () => {
             </Grid>
 
             {/* Filters - First Row */}
-            <Grid item xs={12} md={3}>
+            <Grid size={{ md: 3, sm: 12, xs: 12 }}>
+
               <FormControl fullWidth variant="outlined" disabled={loading}>
                 <InputLabel>Time Filter</InputLabel>
                 <Select
@@ -238,7 +219,8 @@ const MonitoringFeedPages = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={3}>
+            <Grid size={{ md: 3, sm: 12, xs: 12 }}>
+
               <TextField
                 fullWidth
                 type="number"
@@ -251,7 +233,7 @@ const MonitoringFeedPages = () => {
               />
             </Grid>
 
-            <Grid item xs={12} md={3}>
+            <Grid size={{ md: 3, sm: 12, xs: 12 }}>
               <FormControl fullWidth variant="outlined" disabled={loading}>
                 <InputLabel>Language</InputLabel>
                 <Select
@@ -268,7 +250,7 @@ const MonitoringFeedPages = () => {
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} md={3}>
+            <Grid size={{ md: 3, sm: 12, xs: 12 }}>
               <FormControl fullWidth variant="outlined" disabled={loading}>
                 <InputLabel>Country</InputLabel>
                 <Select
@@ -286,7 +268,7 @@ const MonitoringFeedPages = () => {
             </Grid>
 
             {/* Browser and Options */}
-            <Grid item xs={12} md={3}>
+            <Grid size={{ md: 3, sm: 12, xs: 12 }}>
               <FormControl fullWidth variant="outlined" disabled={loading}>
                 <InputLabel>Browser</InputLabel>
                 <Select
@@ -352,8 +334,8 @@ const MonitoringFeedPages = () => {
         {loading && (
           <Box sx={{ mt: 2 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-              <LinearProgress 
-                variant={progress.total > 0 ? "determinate" : "indeterminate"} 
+              <LinearProgress
+                variant={progress.total > 0 ? "determinate" : "indeterminate"}
                 value={progress.total > 0 ? (progress.current / progress.total) * 100 : 0}
                 sx={{ flex: 1 }}
               />
@@ -367,8 +349,8 @@ const MonitoringFeedPages = () => {
 
       {/* Error Display */}
       {error && (
-        <Alert 
-          severity="error" 
+        <Alert
+          severity="error"
           sx={{ mb: 3 }}
           action={
             <IconButton
@@ -393,31 +375,31 @@ const MonitoringFeedPages = () => {
             variant="scrollable"
             scrollButtons="auto"
           >
-            <Tab 
+            <Tab
               label={
                 <Badge badgeContent={totalResults} color="primary">
                   Results Overview
                 </Badge>
-              } 
+              }
             />
             {searchResults?.results && Object.keys(searchResults.results).map(platform => (
-              <Tab 
+              <Tab
                 key={platform}
                 label={
-                  <Badge 
-                    badgeContent={searchResults.results[platform]?.length || 0} 
+                  <Badge
+                    badgeContent={searchResults.results[platform]?.length || 0}
                     color="secondary"
                   >
                     {PLATFORMS.find(p => p.id === platform)?.label || platform}
                   </Badge>
-                } 
+                }
               />
             ))}
           </Tabs>
 
           <Box sx={{ p: 3 }}>
             <SearchResults
-              results={searchResults} 
+              results={searchResults}
               activeTab={activeTab}
               platforms={Object.keys(searchResults?.results || {})}
             />

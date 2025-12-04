@@ -24,6 +24,7 @@ const InputField = ({
     maxDate,
     prefix,
     suffix,
+    disabled=false,
     fullWidth = false,
     error = false,
     hidden = false,
@@ -68,7 +69,7 @@ const InputField = ({
     }, [onChange]);
 
     return (
-        <FormControl variant="outlined" fullWidth={fullWidth} error={error}>
+        <FormControl variant="outlined" fullWidth={fullWidth} error={error} disabled={disabled}>
             {label && (
                 <InputLabel sx={{ fontSize: "13px", display: 'flex', alignItems: 'center' }}>
                     {label}
@@ -159,6 +160,7 @@ InputField.propTypes = {
     suffix: PropTypes.node,
     fullWidth: PropTypes.bool,
     error: PropTypes.bool,
+    disabled: PropTypes.bool,
     errorMessage: PropTypes.string,
     onChange: PropTypes.func,
     hidden: PropTypes.bool,
