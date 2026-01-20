@@ -251,7 +251,7 @@ const GoogleAuthRedirect = React.memo(() => {
           
           // Redirect to login after showing error
           setTimeout(() => {
-            navigate("/auth/signin", { replace: true });
+            navigate("/", { replace: true });
           }, 3000);
           return;
         }
@@ -312,7 +312,7 @@ const GoogleAuthRedirect = React.memo(() => {
         setMessage("Invalid authentication callback");
         
         setTimeout(() => {
-          navigate("/auth/signin", { replace: true });
+          navigate("/", { replace: true });
         }, 2000);
         
       } catch (err) {
@@ -327,7 +327,7 @@ const GoogleAuthRedirect = React.memo(() => {
         });
         
         setTimeout(() => {
-          navigate("/auth/signin", { replace: true });
+          navigate("/", { replace: true });
         }, 2000);
       }
     };

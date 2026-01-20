@@ -23,6 +23,7 @@ import Dashboard from "./features/dashboard/dashboard.dashbord";
 import Profiles from "./features/profiles/profiles";
 import MonitoringFeedPage from "./features/scappers/MonitorFeed.scapers";
 import GoogleAuthRedirect from "./auth/googleRedirectec.auth";
+import DorkingScrappers from "./features/scappers/Dorking.scrapers";
 
 // Single optimized loading component for all routes
 const LoadingFallback = memo(() => (
@@ -65,7 +66,7 @@ const App = memo(() => {
             <Route path={AdminRoutes.dashboard} element={<PrivateRoute element={<Dashboard/>} allowedRoles={['admin','user','analys','view']}/> }/>
             <Route path={AdminRoutes.profiles} element={<PrivateRoute element={<Profiles/>} allowedRoles={['admin','user','analys','view']}/> }/>
             <Route path={AdminRoutes.Monitoring.Feed} element={<PrivateRoute element={<MonitoringFeedPage/>} allowedRoles={['admin','user','analys','view']}/> }/>
-            {/* <Route path={AdminRoutes.Monitoring.Keywords} element={<PrivateRoute element={<MonitoringFeedPages/>} allowedRoles={['admin','user','analys','view']}/> }/> */}
+            <Route path={AdminRoutes.Monitoring.Keywords} element={<PrivateRoute element={<DorkingScrappers/>} allowedRoles={['admin','user','analys','view']}/> }/>
 
           </Route>
         </Routes>
