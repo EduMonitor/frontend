@@ -41,11 +41,11 @@ import useAxiosPrivate from '../../utils/hooks/instance/axiosprivate.instance';
 import useAuth from '../../utils/hooks/contexts/useAth.contexts';
 
 const DorkingScrappers = () => {
-  const eventSourceRef = useRef(null);
+  const abortControllerRef = useRef(null);
   const axiosPrivate = useAxiosPrivate();
   const keywordVali = keywordValidator();
-  // Inside DorkingScrappers component, add:
-  const { auth } = useAuth(); // Add this hook
+  const { auth } = useAuth();
+
   // Search Configuration State
   const [searchParams, setSearchParams] = useState({
     query: '',
@@ -117,15 +117,9 @@ const DorkingScrappers = () => {
   }, []);
 
   // ============================================================================
-  // SEARCH OPERATION - DORKING STREAMING
+  // IMPROVED SEARCH OPERATION WITH BETTER STREAM HANDLING
   // ============================================================================
 
-  // Replace your handleSearch function with this authenticated version
-
-
-
-
-  // Replace handleSearch with this:
   const handleSearch = useCallback(async (e) => {
     e.preventDefault();
 
@@ -153,6 +147,9 @@ const DorkingScrappers = () => {
       setTotalResults(0);
       setProgress({ value: 0, message: "Initializing Dorking search...", platform: "" });
 
+      // Create abort controller for cleanup
+      abortControllerRef.current = new AbortController();
+
       // Build query parameters
       const queryParams = new URLSearchParams({
         query: searchParams.query,
@@ -164,16 +161,15 @@ const DorkingScrappers = () => {
         ...(searchParams.country && { country: searchParams.country }),
       });
 
-      // Use fetch instead of EventSource for authentication support
       const url = `${import.meta.env.VITE_API_URL}/api/v2/dorking/search/stream?${queryParams}`;
 
       console.log('🚀 Starting authenticated Dorking search...');
       console.log('📡 URL:', url);
-      console.log('🔑 Has token:', !!auth?.accessToken);
 
       const response = await fetch(url, {
         method: 'GET',
-        credentials: 'include', // Include cookies
+        credentials: 'include',
+        signal: abortControllerRef.current.signal,
         headers: {
           'Authorization': `Bearer ${auth.accessToken}`,
           'Accept': 'text/event-stream',
@@ -184,123 +180,156 @@ const DorkingScrappers = () => {
       console.log('📥 Response status:', response.status);
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ Error response:', errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+        let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        try {
+          const errorText = await response.text();
+          if (errorText) {
+            errorMessage = errorText;
+          }
+        } catch (e) {
+          console.error('Could not read error response:', e);
+        }
+        throw new Error(errorMessage);
       }
 
-      // Read stream
+      // IMPROVED: Better stream reading with proper chunk handling
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
+      let lastActivity = Date.now();
+      const TIMEOUT = 30000; // 30 seconds timeout
 
-      // Store reader for cleanup
-      eventSourceRef.current = {
-        reader,
-        cancel: () => reader.cancel()
-      };
+      // Timeout checker
+      const timeoutChecker = setInterval(() => {
+        if (Date.now() - lastActivity > TIMEOUT) {
+          console.warn('⏰ Stream timeout - no activity for 30s');
+          clearInterval(timeoutChecker);
+          reader.cancel();
+          setError('Stream timeout - connection lost');
+          setIsSearching(false);
+        }
+      }, 5000);
 
-      // Process stream
-      const readStream = async () => {
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
 
-            if (done) {
-              console.log('✅ Stream complete');
-              setIsSearching(false);
-              break;
-            }
+          if (done) {
+            console.log('✅ Stream complete');
+            clearInterval(timeoutChecker);
+            setIsSearching(false);
+            break;
+          }
 
-            // Decode chunk
-            buffer += decoder.decode(value, { stream: true });
+          lastActivity = Date.now();
 
-            // Split by newlines
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
+          // Decode chunk
+          const chunk = decoder.decode(value, { stream: true });
+          buffer += chunk;
 
-            for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                try {
-                  const data = JSON.parse(line.substring(6));
-                  console.log('📨 SSE Event:', data.type, data);
+          // Process complete lines
+          let newlineIndex;
+          while ((newlineIndex = buffer.indexOf('\n')) !== -1) {
+            const line = buffer.slice(0, newlineIndex).trim();
+            buffer = buffer.slice(newlineIndex + 1);
 
-                  switch (data.type) {
-                    case "status":
-                      setProgress({
-                        value: data.progress || 0,
-                        message: data.message,
-                        platform: data.platform || "",
-                      });
-                      addStatusMessage(data.message);
-                      break;
+            // Skip empty lines
+            if (!line) continue;
 
-                    case "result":
-                      console.log('✅ New result:', data.data.title);
+            // Parse SSE data
+            if (line.startsWith('data: ')) {
+              try {
+                const jsonStr = line.substring(6);
+                const data = JSON.parse(jsonStr);
+                
+                console.log('📨 SSE Event:', data.type, data);
+
+                switch (data.type) {
+                  case "status":
+                    setProgress({
+                      value: data.progress || 0,
+                      message: data.message,
+                      platform: data.platform || "",
+                    });
+                    addStatusMessage(data.message);
+                    break;
+
+                  case "result":
+                    console.log('✅ New result:', data.data?.title?.substring(0, 50));
+                    if (data.data && data.platform) {
                       setSearchResults(prev => ({
                         ...prev,
                         [data.platform]: [...(prev[data.platform] || []), data.data],
                       }));
                       setTotalResults(prev => prev + 1);
                       addStatusMessage(
-                        `Found: ${data.data.title.substring(0, 50)}...`,
+                        `Found: ${data.data.title?.substring(0, 50)}...`,
                         "success"
                       );
-                      break;
+                    }
+                    break;
 
-                    case "platform_complete":
-                      console.log(`✅ Platform ${data.platform} complete: ${data.count} results`);
-                      addStatusMessage(
-                        `✓ ${data.platform}: ${data.count} results`,
-                        "success"
-                      );
-                      break;
+                  case "platform_complete":
+                    console.log(`✅ Platform ${data.platform} complete: ${data.count} results`);
+                    addStatusMessage(
+                      `✓ ${data.platform}: ${data.count} results`,
+                      "success"
+                    );
+                    break;
 
-                    case "complete":
-                      console.log(`🎉 Search complete! Total: ${data.total_results}`);
-                      setProgress({
-                        value: 100,
-                        message: `Complete! Found ${data.total_results} results`,
-                        platform: "",
-                      });
-                      addStatusMessage(
-                        `🎉 Dorking search complete! Total: ${data.total_results} results`,
-                        "success"
-                      );
+                  case "complete":
+                    console.log(`🎉 Search complete! Total: ${data.total_results}`);
+                    setProgress({
+                      value: 100,
+                      message: `Complete! Found ${data.total_results} results`,
+                      platform: "",
+                    });
+                    addStatusMessage(
+                      `🎉 Dorking search complete! Total: ${data.total_results} results`,
+                      "success"
+                    );
+                    clearInterval(timeoutChecker);
+                    setIsSearching(false);
+                    return;
+
+                  case "error":
+                    console.error('❌ SSE Error:', data.message);
+                    addStatusMessage(data.message, "error");
+                    if (data.severity === "error") {
+                      setError(data.message);
+                      clearInterval(timeoutChecker);
                       setIsSearching(false);
-                      return; // Exit
+                      return;
+                    }
+                    break;
 
-                    case "error":
-                      console.error('❌ SSE Error:', data.message);
-                      addStatusMessage(data.message, "error");
-                      if (data.severity === "error") {
-                        setError(data.message);
-                        setIsSearching(false);
-                        return;
-                      }
-                      break;
-
-                    default:
-                      console.warn("Unknown event type:", data.type);
-                  }
-                } catch (err) {
-                  console.error("Error parsing SSE:", err, "Line:", line);
+                  default:
+                    console.warn("Unknown event type:", data.type);
                 }
+              } catch (parseErr) {
+                console.error("Error parsing SSE line:", parseErr);
+                console.error("Problematic line:", line);
+                // Don't stop on parse errors, continue processing
               }
             }
           }
-        } catch (err) {
-          if (err.name !== 'AbortError') {
-            console.error("Stream error:", err);
-            setError("Connection lost. Please try again.");
-            setIsSearching(false);
-          }
         }
-      };
-
-      readStream();
+      } catch (readErr) {
+        clearInterval(timeoutChecker);
+        
+        if (readErr.name === 'AbortError') {
+          console.log('🛑 Stream aborted by user');
+          addStatusMessage('Search stopped by user', 'warning');
+        } else {
+          console.error("Stream reading error:", readErr);
+          setError(`Stream error: ${readErr.message}`);
+        }
+        setIsSearching(false);
+      }
 
     } catch (validationError) {
+      console.error("Validation/Setup error:", validationError);
+      
       if (validationError.inner) {
         const formattedErrors = {};
         validationError.inner.forEach(err => {
@@ -313,23 +342,24 @@ const DorkingScrappers = () => {
         setError(validationError.message || "An error occurred");
       }
       setIsSearching(false);
-      console.error("Error:", validationError);
     }
   }, [keywordVali, searchParams, addStatusMessage, auth?.accessToken]);
 
-  // Update handleStop:
+  // ============================================================================
+  // IMPROVED STOP HANDLER
+  // ============================================================================
+
   const handleStop = useCallback(() => {
-    if (eventSourceRef.current?.cancel) {
-      eventSourceRef.current.cancel();
-      eventSourceRef.current = null;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
     setIsSearching(false);
     addStatusMessage('Search stopped by user', 'warning');
   }, [addStatusMessage]);
 
-
   // ============================================================================
-  // STORE OPERATION - DORKING STORE
+  // STORE OPERATION
   // ============================================================================
 
   const handleStoreResults = useCallback(async () => {
@@ -343,7 +373,6 @@ const DorkingScrappers = () => {
     setError(null);
 
     try {
-      // Build query parameters for DORKING store endpoint
       const queryParams = new URLSearchParams({
         query: searchParams.query,
         platforms: searchParams.platforms.join(","),
@@ -389,27 +418,25 @@ const DorkingScrappers = () => {
   ]);
 
   // ============================================================================
-  // LIFECYCLE
+  // LIFECYCLE - CLEANUP
   // ============================================================================
 
   useEffect(() => {
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
       }
     };
   }, []);
 
   // ============================================================================
-  // RENDER
+  // RENDER (Rest of the component remains the same)
   // ============================================================================
 
   return (
     <Box sx={{ width: '100%', p: { xs: 2, md: 3 } }}>
-      {/* System Status */}
       <StatusResults />
 
-      {/* Search Configuration Form */}
       <Paper
         elevation={3}
         sx={{
@@ -422,7 +449,6 @@ const DorkingScrappers = () => {
           overflow: 'hidden'
         }}
       >
-        {/* Decorative Background */}
         <Box
           sx={{
             position: 'absolute',
@@ -439,7 +465,6 @@ const DorkingScrappers = () => {
 
         <form onSubmit={handleSearch}>
           <Stack spacing={3}>
-            {/* Header */}
             <Box sx={{ textAlign: 'center', mb: 2 }}>
               <Typography
                 variant="h4"
@@ -461,7 +486,6 @@ const DorkingScrappers = () => {
 
             <Divider />
 
-            {/* Search Query Input */}
             <InputField
               fullWidth
               label="Search Query"
@@ -476,7 +500,6 @@ const DorkingScrappers = () => {
               disabled={isSearching}
             />
 
-            {/* Platform Selection */}
             <Box>
               <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                 📱 Target Platforms
@@ -514,7 +537,6 @@ const DorkingScrappers = () => {
 
             <Divider />
 
-            {/* Search Parameters */}
             <Box>
               <Typography variant="subtitle1" gutterBottom sx={{ fontWeight: 600, mb: 2 }}>
                 ⚙️ Dorking Parameters
@@ -586,7 +608,6 @@ const DorkingScrappers = () => {
               </Grid>
             </Box>
 
-            {/* Action Buttons */}
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
               {!isSearching ? (
                 <>
@@ -655,7 +676,6 @@ const DorkingScrappers = () => {
         </form>
       </Paper>
 
-      {/* Error Alert */}
       {error && (
         <Fade in={!!error}>
           <Alert
@@ -672,7 +692,6 @@ const DorkingScrappers = () => {
         </Fade>
       )}
 
-      {/* Success Alert */}
       {saveSuccess && (
         <Fade in={saveSuccess}>
           <Alert
@@ -689,7 +708,6 @@ const DorkingScrappers = () => {
         </Fade>
       )}
 
-      {/* Progress Indicator */}
       {isSearching && (
         <Grow in={isSearching}>
           <Paper elevation={2} sx={{ p: 3, mb: 3, borderRadius: 3 }}>
@@ -751,7 +769,6 @@ const DorkingScrappers = () => {
         </Grow>
       )}
 
-      {/* Search Results */}
       {Object.keys(searchResults).length > 0 && (
         <Fade in timeout={500}>
           <Box>
@@ -799,7 +816,6 @@ const DorkingScrappers = () => {
         </Fade>
       )}
 
-      {/* Empty State */}
       {!isSearching && Object.keys(searchResults).length === 0 && !error && (
         <Paper
           sx={{
