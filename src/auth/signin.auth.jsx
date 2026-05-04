@@ -34,7 +34,7 @@ import { axiosPrivate } from '../utils/hooks/instance/axios.instance';
 import useAuth from '../utils/hooks/contexts/useAth.contexts';
 import { fetchCsrfToken } from '../utils/hooks/token/csrf.token';
 import useFacebookAuth from '../utils/functions/handlFacebook-login';
-import { handleGoogleSignIn, handleGoogleCallback } from '../utils/functions/handleGoogle-login';
+import {  handleGoogleCallback } from '../utils/functions/handleGoogle-login';
 
 const SignInAuth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -49,7 +49,7 @@ const SignInAuth = () => {
   const navigate = useNavigate();
   const [errors, setErrors] = useState({})
   const theme = useAuthTheme();
-  const { isFacebookLoading, handleFacebookLogin, FacebookToastComponent } = useFacebookAuth();
+  const { isFacebookLoading, FacebookToastComponent } = useFacebookAuth();
 
   // Handle Google OAuth callback on component mount
   useEffect(() => {
@@ -362,7 +362,7 @@ const SignInAuth = () => {
                     </Button>
                   </Box>
 
-                  <Divider sx={{ mb: 3, mt: 4, color: theme.textSecondary }}>
+                  {/* <Divider sx={{ mb: 3, mt: 4, color: theme.textSecondary }}>
                     <Typography variant="body2" sx={{ color: theme.textSecondary }}>
                       or continue with
                     </Typography>
@@ -407,9 +407,9 @@ const SignInAuth = () => {
                     >
                       Facebook
                     </Button>
-                  </Box>
+                  </Box> */}
 
-                  <Box sx={{ textAlign: 'center' }}>
+                  {/* <Box sx={{ textAlign: 'center' }}>
                     <Typography variant="body2" sx={{ color: theme.textSecondary }}>
                       Don't have an account?{' '}
                       <Button
@@ -430,7 +430,7 @@ const SignInAuth = () => {
                         Sign up here
                       </Button>
                     </Typography>
-                  </Box>
+                  </Box> */}
                 </CardBox>
               </Box>
             </Slide>
