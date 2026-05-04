@@ -40,7 +40,7 @@ import { keywordValidator } from '../../utils/validators/input.validators';
 import useAxiosPrivate from '../../utils/hooks/instance/axiosprivate.instance';
 import useAuth from '../../utils/hooks/contexts/useAth.contexts';
 
-const DorkingScrappers = () => {
+const OwnScrapper = () => {
   const abortControllerRef = useRef(null);
   const axiosPrivate = useAxiosPrivate();
   const keywordVali = keywordValidator();
@@ -161,7 +161,7 @@ const DorkingScrappers = () => {
         ...(searchParams.country && { country: searchParams.country }),
       });
 
-      const url = `${import.meta.env.VITE_API_URL}/api/v2/dorking/search/stream?${queryParams}`;
+      const url = `${import.meta.env.VITE_API_URL}/api/v2/own/search/stream?${queryParams}`;
 
       console.log('🚀 Starting authenticated Dorking search...');
       console.log('📡 URL:', url);
@@ -378,60 +378,50 @@ const DorkingScrappers = () => {
   // STORE OPERATION
   // ============================================================================
 
-  const handleStoreResults = useCallback(async () => {
-    if (Object.keys(searchResults).length === 0) {
-      setError("No results to save");
-      return;
-    }
+// Dans OwnScrapper.jsx - MODIFIER handleStoreResults
+const handleStoreResults = useCallback(async () => {
+  if (Object.keys(searchResults).length === 0) {
+    setError("No results to save");
+    return;
+  }
 
-    setIsSaving(true);
-    setSaveSuccess(false);
-    setError(null);
+  setIsSaving(true);
+  setSaveSuccess(false);
+  setError(null);
 
-    try {
-      const queryParams = new URLSearchParams({
-        query: searchParams.query,
-        platforms: searchParams.platforms.join(","),
-        max_results: String(searchParams.maxResults),
-        scrape_details: String(searchParams.scrapeDetails),
-        time_filter: searchParams.timeFilter,
-        ...(searchParams.language && { language: searchParams.language }),
-        ...(searchParams.country && { country: searchParams.country }),
-        tags: `dorking,osint,${searchParams.country || 'general'},${new Date().toISOString().split('T')[0]}`
-      });
+  try {
+    // ✅ ENVOIE searchResults JSON !
+    const results_json = JSON.stringify(searchResults);
+    
+    const queryParams = new URLSearchParams({
+      query: searchParams.query,
+      platforms: searchParams.platforms.join(","),
+      max_results: String(searchParams.maxResults),
+      scrape_details: String(searchParams.scrapeDetails),
+      time_filter: searchParams.timeFilter,
+      language: searchParams.language,
+      country: searchParams.country,
+      results_json: results_json  // ✅ LES DONNÉES SCRAPER !
+    });
 
-      const response = await axiosPrivate.post(
-        `/api/v2/dorking/search/store?${queryParams}`
-      );
+    const response = await axiosPrivate.post(
+      `/api/v2/own/search/store?${queryParams}`
+    );
 
-      if (response.status !== 200 && response.status !== 201) {
-        throw new Error(`Failed to store: ${response.statusText}`);
-      }
+    const result = response.data;
+    setSaveSuccess(true);
+    addStatusMessage(
+      `✅ Saved ${result.summary.total_entities_saved} entities + ${result.summary.total_content_saved} content items`,
+      'success'
+    );
 
-      const result = response.data;
-
-      setSaveSuccess(true);
-      addStatusMessage(
-        `✅ Saved ${result.total_results || totalResults} results to database`,
-        'success'
-      );
-
-      setTimeout(() => setSaveSuccess(false), 5000);
-
-    } catch (err) {
-      console.error("Store error:", err);
-      const errorMessage = err.response?.data?.detail || err.message || "Unknown error occurred";
-      setError(`Failed to save results: ${errorMessage}`);
-    } finally {
-      setIsSaving(false);
-    }
-  }, [
-    searchResults,
-    searchParams,
-    axiosPrivate,
-    addStatusMessage,
-    totalResults
-  ]);
+  } catch (err) {
+    console.error("Error saving results:", err);
+    setError(`Failed to save results: ${err.message}`);
+  } finally {
+    setIsSaving(false);
+  }
+}, [searchResults, searchParams, axiosPrivate, addStatusMessage]);
 
   // ============================================================================
   // LIFECYCLE - CLEANUP
@@ -863,4 +853,4 @@ const DorkingScrappers = () => {
   );
 };
 
-export default DorkingScrappers;
+export default OwnScrapper;

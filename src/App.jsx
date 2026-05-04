@@ -24,6 +24,17 @@ import Profiles from "./features/profiles/profiles";
 import MonitoringFeedPage from "./features/scappers/MonitorFeed.scapers";
 import GoogleAuthRedirect from "./auth/googleRedirectec.auth";
 import DorkingScrappers from "./features/scappers/Dorking.scrapers";
+import OwnScrapper from "./features/scappers/Own.scrappers";
+import UsersAdmin from "./features/users/Users.users";
+import UserDetail from "./features/users/Details.users";
+import OsintNewSearch from "./features/osint-search/OsintNewSearch";
+import OsintResults from "./features/osint-search/OsintResult";
+import EntityDetail from "./features/osint-search/EntityDetails";
+import { ContentDetail } from "./features/osint-search/ContentSessionDetails";
+import OsintFilters from "./features/osint-search/FiltersOsint";
+import AddUser from "./features/users/Add.users";
+import EditUser from "./features/users/Edit.users";
+import Analyser from "./features/analyser/Analyzer.analyser";
 
 // Single optimized loading component for all routes
 const LoadingFallback = memo(() => (
@@ -63,10 +74,22 @@ const App = memo(() => {
 
           {/* Features controller routes */}
           <Route path={"/ai"} element={<ControllerLayout/>}>
-            <Route path={AdminRoutes.dashboard} element={<PrivateRoute element={<Dashboard/>} allowedRoles={['admin','user','analys','view']}/> }/>
-            <Route path={AdminRoutes.profiles} element={<PrivateRoute element={<Profiles/>} allowedRoles={['admin','user','analys','view']}/> }/>
-            <Route path={AdminRoutes.Monitoring.Feed} element={<PrivateRoute element={<MonitoringFeedPage/>} allowedRoles={['admin','user','analys','view']}/> }/>
-            <Route path={AdminRoutes.Monitoring.Keywords} element={<PrivateRoute element={<DorkingScrappers/>} allowedRoles={['admin','user','analys','view']}/> }/>
+            <Route path={AdminRoutes.dashboard} element={<PrivateRoute element={<Dashboard/>} allowedRoles={['admin','user']}/> }/>
+            <Route path={AdminRoutes.profiles} element={<PrivateRoute element={<Profiles/>} allowedRoles={['admin', 'user']}/> }/>
+            <Route path={AdminRoutes.Monitoring.Feed} element={<PrivateRoute element={<MonitoringFeedPage/>} allowedRoles={['admin','user']}/> }/>
+            <Route path={AdminRoutes.analystics} element={<PrivateRoute element={<Analyser/>} allowedRoles={['admin','user']}/> }/>
+
+            <Route path={AdminRoutes.Monitoring.Keywords} element={<PrivateRoute element={<DorkingScrappers/>} allowedRoles={['admin','user']}/> }/>
+            <Route path={AdminRoutes.Monitoring.Hashtags} element={<PrivateRoute element={<OwnScrapper/>} allowedRoles={['admin','user']}/> }/>
+            <Route path={AdminRoutes.Settings.Users} element={<PrivateRoute element={<UsersAdmin/>} allowedRoles={['admin']}/> }/>
+            <Route path={AdminRoutes.Settings.AddUsers} element={<PrivateRoute element={<AddUser/>} allowedRoles={['admin']}/> }/>
+            <Route path={AdminRoutes.Settings.UserDetails} element={<PrivateRoute element={<UserDetail/>} allowedRoles={['admin']}/> }/>
+            <Route path={AdminRoutes.Settings.EditUsers} element={<PrivateRoute element={<EditUser/>} allowedRoles={['admin']}/> }/>
+            <Route path={AdminRoutes.Analysis.New} element={<PrivateRoute element={<OsintNewSearch/>} allowedRoles={['admin','user',]}/> }/>
+            <Route path={AdminRoutes.Analysis.Results} element={<PrivateRoute element={<OsintResults/>} allowedRoles={['admin','user']}/> }/>
+            <Route path={AdminRoutes.Analysis.Filters} element={<PrivateRoute element={<OsintFilters/>} allowedRoles={['admin','user']}/> }/>
+            <Route path={AdminRoutes.Analysis.EntitiesView} element={<PrivateRoute element={<EntityDetail/>} allowedRoles={['admin','user']}/> }/>
+            <Route path={AdminRoutes.Analysis.SessionContent} element={<PrivateRoute element={<ContentDetail/>} allowedRoles={['admin','user']}/> }/>
 
           </Route>
         </Routes>

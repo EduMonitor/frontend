@@ -27,23 +27,24 @@ import {
 import DOMPurify from 'dompurify';
 import SearchResults from './Result.scraper';
 import StatusResults from './StatusResults.scraper';
-import { 
-  BROWSERS, 
-  COUNTRIES, 
-  LANGUAGES, 
-  PLATFORMS, 
-  TIME_FILTERS 
+import {
+  BROWSERS,
+  COUNTRIES,
+  LANGUAGES,
+  PLATFORMS,
+  TIME_FILTERS
 } from '../../constants/Params.contants';
 import InputField from '../../components/forms/input.forms';
 import SelectField from '../../components/forms/select.forms';
 import { keywordValidator } from '../../utils/validators/input.validators';
 import useAxiosPrivate from '../../utils/hooks/instance/axiosprivate.instance';
+import useAuth from '../../utils/hooks/contexts/useAth.contexts';
 
 const MonitoringFeedPage = () => {
   const eventSourceRef = useRef(null);
   const axiosPrivate = useAxiosPrivate();
   const keywordVali = keywordValidator();
-
+  const { auth } = useAuth(); // Assuming you have an auth context
   // Search Configuration State
   const [searchParams, setSearchParams] = useState({
     query: '',
@@ -63,12 +64,12 @@ const MonitoringFeedPage = () => {
   const [totalResults, setTotalResults] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // UI Feedback State
-  const [progress, setProgress] = useState({ 
-    value: 0, 
-    message: '', 
-    platform: '' 
+  const [progress, setProgress] = useState({
+    value: 0,
+    message: '',
+    platform: ''
   });
   const [statusMessages, setStatusMessages] = useState([]);
   const [error, setError] = useState(null);
@@ -81,15 +82,15 @@ const MonitoringFeedPage = () => {
 
   const handleInputChange = useCallback((event) => {
     const { name, value, type, checked } = event.target;
-    const sanitizedValue = type === "checkbox" 
-      ? checked 
+    const sanitizedValue = type === "checkbox"
+      ? checked
       : DOMPurify.sanitize(value);
-    
+
     setSearchParams(prev => ({
       ...prev,
       [name]: sanitizedValue
     }));
-    
+
     setErrors(prev => ({
       ...prev,
       [name]: undefined
@@ -108,11 +109,11 @@ const MonitoringFeedPage = () => {
   const addStatusMessage = useCallback((message, type = 'info') => {
     setStatusMessages(prev => [
       ...prev.slice(-4),
-      { 
-        id: Date.now(), 
-        message, 
-        type, 
-        timestamp: new Date() 
+      {
+        id: Date.now(),
+        message,
+        type,
+        timestamp: new Date()
       }
     ]);
   }, []);
@@ -141,6 +142,7 @@ const MonitoringFeedPage = () => {
       setStatusMessages([]);
       setTotalResults(0);
       setProgress({ value: 0, message: "Initializing...", platform: "" });
+      const token = auth?.accessToken; // get from your auth context
 
       // Build query parameters
       const queryParams = new URLSearchParams({
@@ -154,6 +156,8 @@ const MonitoringFeedPage = () => {
         local_context: String(searchParams.localContext),
         ...(searchParams.language && { language: searchParams.language }),
         ...(searchParams.country && { country: searchParams.country }),
+        ...(token && { token }), // ← add token here
+
       });
 
       // Initialize EventSource for streaming
@@ -245,7 +249,7 @@ const MonitoringFeedPage = () => {
       }
       console.error("Validation error:", validationError);
     }
-  }, [keywordVali, searchParams, addStatusMessage]);
+  }, [keywordVali, searchParams, auth?.accessToken, addStatusMessage]);
 
   const handleStop = useCallback(() => {
     if (eventSourceRef.current) {
@@ -273,19 +277,13 @@ const MonitoringFeedPage = () => {
     try {
       const queryParams = new URLSearchParams({
         query: searchParams.query,
-        platforms: searchParams.platforms.join(","),
-        max_results: String(searchParams.maxResults),
-        scrape_details: String(searchParams.scrapeDetails),
-        time_filter: searchParams.timeFilter,
-        browser: searchParams.browser,
-        headless: String(searchParams.headless),
-        ...(searchParams.language && { language: searchParams.language }),
-        ...(searchParams.country && { country: searchParams.country }),
         tags: `osint,${searchParams.country || 'general'},${new Date().toISOString().split('T')[0]}`
       });
 
+      // Send the already-scraped results directly
       const response = await axiosPrivate.post(
-        `/api/v2/scraper/search/store?${queryParams}`
+        `/api/v2/scraper/search/store-results?${queryParams}`,
+        searchResults  // ← Send the cached results!
       );
 
       if (response.status !== 200 && response.status !== 201) {
@@ -309,13 +307,7 @@ const MonitoringFeedPage = () => {
     } finally {
       setIsSaving(false);
     }
-  }, [
-    searchResults, 
-    searchParams, 
-    axiosPrivate, 
-    addStatusMessage, 
-    totalResults
-  ]);
+  }, [searchResults, searchParams, axiosPrivate, addStatusMessage, totalResults]);
 
   // ============================================================================
   // LIFECYCLE
@@ -344,7 +336,7 @@ const MonitoringFeedPage = () => {
         sx={{
           p: 4,
           mb: 3,
-          background: (theme) => 
+          background: (theme) =>
             `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`,
           borderRadius: 3,
           position: 'relative',
@@ -375,7 +367,7 @@ const MonitoringFeedPage = () => {
                 gutterBottom
                 sx={{
                   fontWeight: 700,
-                  background: (theme) => 
+                  background: (theme) =>
                     `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent'
@@ -569,7 +561,7 @@ const MonitoringFeedPage = () => {
                       py: 1.5,
                       fontSize: '1.1rem',
                       fontWeight: 700,
-                      background: (theme) => 
+                      background: (theme) =>
                         `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
                       boxShadow: 3,
                       '&:hover': {
@@ -685,7 +677,7 @@ const MonitoringFeedPage = () => {
                   backgroundColor: (theme) => alpha(theme.palette.primary.main, 0.1),
                   '& .MuiLinearProgress-bar': {
                     borderRadius: 4,
-                    background: (theme) => 
+                    background: (theme) =>
                       `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`
                   }
                 }}
@@ -704,8 +696,8 @@ const MonitoringFeedPage = () => {
                         severity={msg.type}
                         icon={
                           msg.type === 'success' ? <FaCheckCircle /> :
-                          msg.type === 'error' ? <FaExclamationTriangle /> :
-                          <FaSpinner className="fa-spin" />
+                            msg.type === 'error' ? <FaExclamationTriangle /> :
+                              <FaSpinner className="fa-spin" />
                         }
                         sx={{ fontSize: '0.85rem' }}
                       >
@@ -733,17 +725,17 @@ const MonitoringFeedPage = () => {
                 background: (theme) => alpha(theme.palette.background.paper, 0.9)
               }}
             >
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'space-between', 
-                mb: 3 
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                mb: 3
               }}>
-                <Typography variant="h5" sx={{ 
-                  fontWeight: 700, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 1 
+                <Typography variant="h5" sx={{
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1
                 }}>
                   🎯 Intelligence Results
                 </Typography>
@@ -775,7 +767,7 @@ const MonitoringFeedPage = () => {
             p: 6,
             textAlign: 'center',
             borderRadius: 3,
-            background: (theme) => 
+            background: (theme) =>
               `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.05)} 0%, ${alpha(theme.palette.secondary.main, 0.05)} 100%)`
           }}
         >

@@ -26,13 +26,16 @@ export const AdminRoutes = {
   users: "users",
   settings: "settings",
   profiles: "profiles",
+  analystics: "analytics",
   
   // Analysis routes
   Analysis: {
     New: "analysis/new",
     Results: "analysis/results",
     Filters: "analysis/filters",
-    Models: "analysis/models"
+    Models: "analysis/models",
+    EntitiesView:"analysis/entites/:entityId",
+    SessionContent:"analysis/sessions-content/:contentId"
   },
   
   // Insights routes
@@ -67,7 +70,7 @@ export const AdminRoutes = {
   
   // User Management routes
   User: {
-    Profile: "user/profile",
+    Profile: "profiles",
     History: "user/history",
     Bookmarks: "user/bookmarks",
     Notifications: "user/notifications"
@@ -83,6 +86,9 @@ export const AdminRoutes = {
   // Settings routes (expanded)
   Settings: {
     Users: "settings/users",
+    AddUsers: "settings/add-user",
+    EditUsers: "settings/edit-user/:uuid",
+    UserDetails:"settings/users/:userId",
     Roles: "settings/roles",
     AIConfig: "settings/ai-config",
     Security: "settings/security",
