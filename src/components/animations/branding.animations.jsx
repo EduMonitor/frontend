@@ -55,7 +55,7 @@ export const FeatureChips = ({ aiFeatures, theme }) => {
   }, [aiFeatures.length]);
 
   return (
-    <Grid container sx={{gap:1, display:'flex', justifyItems:'center'}} spacing={3}>
+    <Grid container sx={{gap:1, display:{xs:'none', md:'flex'}, justifyItems:'center'}} spacing={3}>
       {aiFeatures.map((feature, index) => (
         <Grid key={index} size={{md:4,sm:4,xs:4}}>
         <Fade  in timeout={1000 + index * 200}>
@@ -120,6 +120,7 @@ export const BrandingSection = ({ aiFeatures, theme }) => {
               fontSize: '1.1rem',
               lineHeight: 1.6,
               maxWidth: 500,
+              display:{xs:'none', md:'block'}
             }}
           >
             Harness the power of advanced AI to detect fake news, hate speech, 

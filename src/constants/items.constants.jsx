@@ -59,13 +59,13 @@ export const sidebarMenuItems = (userRoles = []) => {
       allowRoles: roles.all,
     },
 
-    // ── MONITORING ───────────────────────────────────────────────
-    {
-      path: p(constant.Monitoring.Feed),
-      name: "Live Feed",
-      icon: FaGlobe,
-      allowRoles: roles.all,
-    },
+    // // ── MONITORING ───────────────────────────────────────────────
+    // {
+    //   path: p(constant.Monitoring.Feed),
+    //   name: "Live Feed",
+    //   icon: FaGlobe,
+    //   allowRoles: roles.all,
+    // },
     // ── MONITORING ───────────────────────────────────────────────
     {
       path: p(constant.analystics),
@@ -73,12 +73,12 @@ export const sidebarMenuItems = (userRoles = []) => {
       icon: FaChartLine,
       allowRoles: roles.all,
     },
-    {
-      path: p(constant.Monitoring.Keywords),
-      name: "Alertes Mots-clés",
-      icon: FaBell,
-      allowRoles: roles.all,
-    },
+    // {
+    //   path: p(constant.Monitoring.Keywords),
+    //   name: "Alertes Mots-clés",
+    //   icon: FaBell,
+    //   allowRoles: roles.all,
+    // },
 
     // ── ADMIN ────────────────────────────────────────────────────
     {
@@ -93,24 +93,24 @@ export const sidebarMenuItems = (userRoles = []) => {
       icon: FaPlus,
       allowRoles: roles.admin,
     },
-    {
-      path: p(constant.Settings.Roles),
-      name: "Rôles",
-      icon: FaUserShield,
-      allowRoles: roles.admin,
-    },
-    {
-      path: p(constant.Settings.AIConfig),
-      name: "Paramètres IA",
-      icon: FaCog,
-      allowRoles: roles.admin,
-    },
-    {
-      path: p(constant.Settings.Security),
-      name: "Sécurité",
-      icon: FaLock,
-      allowRoles: roles.admin,
-    },
+    // {
+    //   path: p(constant.Settings.Roles),
+    //   name: "Rôles",
+    //   icon: FaUserShield,
+    //   allowRoles: roles.admin,
+    // },
+    // {
+    //   path: p(constant.Settings.AIConfig),
+    //   name: "Paramètres IA",
+    //   icon: FaCog,
+    //   allowRoles: roles.admin,
+    // },
+    // {
+    //   path: p(constant.Settings.Security),
+    //   name: "Sécurité",
+    //   icon: FaLock,
+    //   allowRoles: roles.admin,
+    // },
   ];
 
   return menuItems.filter((item) => hasAccess(item.allowRoles));
