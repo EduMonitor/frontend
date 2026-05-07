@@ -100,7 +100,7 @@ export default function OsintFilters() {
     if (form.entityType) p.append("entity_type", form.entityType);
     if (form.flaggedOnly) p.append("flagged", "true");
     if (form.minFollowers) p.append("min_followers", form.minFollowers);
-    navigate(`/ai/osint/results?${p}`);
+    navigate(`/ai/analysis/results?${p}`);
   };
 
   const handleSahel = async (type) => {
@@ -279,7 +279,7 @@ export default function OsintFilters() {
                         {f.country && <Typography variant="caption" sx={{ color: "text.disabled", fontSize: 10, fontFamily: "monospace" }}>{f.country}</Typography>}
                       </Stack>
                     </Box>
-                    <Button size="small" variant="outlined" onClick={() => navigate("/ai/osint/results")}
+                    <Button size="small" variant="outlined" onClick={() => navigate("/ai/analysis/results")}
                       sx={{ fontSize: 9, fontFamily: "monospace", fontWeight: 700, borderColor: f.active ? alpha("#4ade80", 0.4) : theme.palette.divider, color: f.active ? "#4ade80" : "text.disabled", minWidth: 70, py: 0.5 }}>
                       {f.active ? "ACTIF" : "APPLIQUER"}
                     </Button>

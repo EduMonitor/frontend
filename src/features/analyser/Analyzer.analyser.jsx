@@ -1,27 +1,17 @@
 /* eslint-disable no-unused-vars */
-// pages/osint/Analyser.jsx
-//
-// URL FIXES applied:
-//  - Content list:  /api/v2/osint/analysts/content   (was /api/v2/scraper/analysts/content)
-//  - Session list:  /api/v2/osint/analysts/sessions  (was /api/v2/scraper/analysts/sessions)
-//  - Analysis text: /api/v2/analysis/text            (was already correct — needs main.py fix)
-//  - Analysis post: /api/v2/analysis/content/{id}    (was already correct — needs main.py fix)
-//  - Bulk session:  /api/v2/analysis/bulk/session/{id} (same)
-//  - Flagged:       /api/v2/analysis/flagged/summary  (same)
-//
-// BEHAVIOUR FIXES:
-//  - ContentAnalysisRow onAnalyse called with (id) only — text arg dropped
-//  - Both useQuery fetches have .catch(() => []) so UI never hard-crashes
-//  - handleContentAnalyse deduplicates: removes stale result before re-adding
-//  - Session bulk success message now shows correctly from mutation data
-//  - Flagged summary KPI grid shows even when results.length > 0
+// pages/osint/Analyser.jsx — REDESIGNED
+// New fields displayed:
+//   risk_summary.label, conclusion, author_position, ai_opinion,
+//   sahel_violations, topic_scores bar chart, all toxicity categories
+// New input: language selector (Français, English, Mooré, Dioula, Hausa,
+//   Fulfulde, Bambara, Arabic, Wolof, Auto-detect)
 
 import { useState } from 'react';
 import {
     Box, Grid, Paper, Typography, Card, Chip, LinearProgress,
     Alert, Stack, Divider, Avatar, CircularProgress, Tooltip,
-    IconButton, TextField, Button, Tab, Tabs, alpha,
-    List, ListItem, ListItemText, Collapse,
+    IconButton, TextField, Button, Tab, Tabs, alpha, Select,
+    MenuItem, FormControl, InputLabel, Collapse,
 } from '@mui/material';
 import { styled, useTheme } from '@mui/material/styles';
 import {
@@ -29,11 +19,29 @@ import {
     FaCheckCircle, FaTimesCircle, FaBrain, FaChartPie,
     FaListAlt, FaRobot, FaFlag, FaBolt, FaInfoCircle,
     FaAngleDown, FaAngleUp, FaSyncAlt, FaFlask,
-    FaEye, FaFilter, FaRegClock, FaDatabase,
+    FaEye, FaFilter, FaRegClock, FaDatabase, FaGlobeAfrica,
+    FaUserSecret, FaBalanceScale, FaMicroscope,
 } from 'react-icons/fa';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import useAxiosPrivate from '../../utils/hooks/instance/axiosprivate.instance';
 import useCurrentUser from '../../utils/hooks/current/user.currents';
+
+// ============================================================================
+// LANGUAGE OPTIONS
+// ============================================================================
+
+const LANGUAGES = [
+    { value: 'fr',   label: 'Français'       },
+    { value: 'en',   label: 'English'        },
+    { value: 'mos',  label: 'Mooré'          },
+    { value: 'dyu',  label: 'Dioula'         },
+    { value: 'ha',   label: 'Hausa'          },
+    { value: 'ff',   label: 'Fulfulde'       },
+    { value: 'bm',   label: 'Bambara'        },
+    { value: 'ar',   label: 'Arabic / عربي'  },
+    { value: 'wo',   label: 'Wolof'          },
+    { value: 'auto', label: 'Auto-detect'    },
+];
 
 // ============================================================================
 // STYLED COMPONENTS
@@ -65,7 +73,7 @@ const StatBlock = styled(Box)(({ accentcolor }) => ({
         width: 3,
         height: '100%',
         background: accentcolor,
-        borderRadius: 0,  // FIX: single-sided border must not have rounded corners
+        borderRadius: 0,
     },
 }));
 
@@ -132,37 +140,93 @@ const SENTIMENT_META = {
     neutral:  { color: '#94a3b8', label: 'Neutral'  },
 };
 
+const CONCLUSION_META = {
+    green:  { color: '#22c55e', bg: alpha('#22c55e', 0.08) },
+    yellow: { color: '#f59e0b', bg: alpha('#f59e0b', 0.08) },
+    orange: { color: '#f97316', bg: alpha('#f97316', 0.08) },
+    red:    { color: '#ef4444', bg: alpha('#ef4444', 0.08) },
+};
+
 // ============================================================================
-// ANALYSIS RESULT CARD
+// TOPIC BAR CHART
+// ============================================================================
+
+const TopicBars = ({ topicScores = {} }) => {
+    const sorted = Object.entries(topicScores)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8);
+
+    return (
+        <Stack spacing={0.75}>
+            {sorted.map(([topic, score]) => (
+                <Stack key={topic} direction="row" spacing={1.5} alignItems="center">
+                    <Typography variant="caption" fontFamily="monospace" color="text.secondary"
+                        sx={{ minWidth: 90, textTransform: 'capitalize', fontSize: 10 }}>
+                        {topic}
+                    </Typography>
+                    <Box flex={1}>
+                        <LinearProgress
+                            variant="determinate"
+                            value={score * 100}
+                            sx={{
+                                height: 5, borderRadius: 99,
+                                bgcolor: alpha('#8b5cf6', 0.08),
+                                '& .MuiLinearProgress-bar': {
+                                    bgcolor: '#8b5cf6', borderRadius: 99,
+                                },
+                            }}
+                        />
+                    </Box>
+                    <Typography variant="caption" fontFamily="monospace" fontWeight={700}
+                        sx={{ minWidth: 36, textAlign: 'right', fontSize: 10 }}>
+                        {Math.round(score * 100)}%
+                    </Typography>
+                </Stack>
+            ))}
+        </Stack>
+    );
+};
+
+// ============================================================================
+// ANALYSIS RESULT CARD — full redesign with all new fields
 // ============================================================================
 
 const AnalysisResultCard = ({ analysis, contentId, text }) => {
     const theme  = useTheme();
-    const [open, setOpen] = useState(false);
+    const [toxOpen, setToxOpen]     = useState(false);
+    const [topicOpen, setTopicOpen] = useState(false);
 
     if (!analysis) return null;
 
-    const risk      = analysis.disinformation_risk || {};
-    const sentiment = analysis.sentiment           || {};
-    const toxicity  = analysis.toxicity            || {};
-    const topic     = analysis.topic               || {};
+    const risk      = analysis.disinformation_risk  || {};
+    const riskSum   = analysis.risk_summary         || {};
+    const sentiment = analysis.sentiment            || {};
+    const toxicity  = analysis.toxicity             || {};
+    const topic     = analysis.topic                || {};
+    const author    = analysis.author_position      || {};
+    const aiOp      = analysis.ai_opinion           || {};
+    const conclusion = analysis.conclusion          || {};
+    const sahel     = analysis.sahel_violations     || {};
 
-    const riskMeta = RISK_META[risk.risk_level]            || RISK_META.low;
-    const sentMeta = SENTIMENT_META[sentiment.sentiment]   || SENTIMENT_META.neutral;
-    const RiskIcon = riskMeta.icon;
+    const riskMeta  = RISK_META[risk.risk_level]           || RISK_META.low;
+    const sentMeta  = SENTIMENT_META[sentiment.sentiment]  || SENTIMENT_META.neutral;
+    const concMeta  = CONCLUSION_META[conclusion.color]    || CONCLUSION_META.green;
+    const RiskIcon  = riskMeta.icon;
 
     return (
         <GlassCard elevation={0} sx={{ overflow: 'hidden' }}>
+            {/* Top colour bar */}
             <Box sx={{ height: 4, bgcolor: riskMeta.color, width: '100%' }} />
 
             <Box sx={{ p: 3 }}>
-                {/* Header */}
+
+                {/* ── Header ── */}
                 <Stack direction="row" alignItems="flex-start" justifyContent="space-between" mb={2}>
                     <Box>
                         <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
                             <RiskIcon color={riskMeta.color} size={16} />
                             <Typography variant="subtitle2" fontWeight={800} fontFamily="monospace" color={riskMeta.color}>
-                                {riskMeta.label}
+                                {riskSum.label || riskMeta.label}
                             </Typography>
                         </Stack>
                         {contentId && (
@@ -171,7 +235,7 @@ const AnalysisResultCard = ({ analysis, contentId, text }) => {
                             </Typography>
                         )}
                     </Box>
-                    <Stack direction="row" spacing={1} alignItems="center">
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
                         <RiskBadge
                             size="small"
                             risklevel={risk.risk_level || 'unknown'}
@@ -185,7 +249,7 @@ const AnalysisResultCard = ({ analysis, contentId, text }) => {
                     </Stack>
                 </Stack>
 
-                {/* Text preview */}
+                {/* ── Text preview ── */}
                 {text && (
                     <Box sx={{
                         p: 1.5, borderRadius: 2, mb: 2,
@@ -199,7 +263,7 @@ const AnalysisResultCard = ({ analysis, contentId, text }) => {
                     </Box>
                 )}
 
-                {/* Score arcs */}
+                {/* ── Score arcs ── */}
                 <Grid container spacing={2} mb={2}>
                     <Grid size={4}>
                         <Stack alignItems="center" spacing={0.5}>
@@ -223,28 +287,134 @@ const AnalysisResultCard = ({ analysis, contentId, text }) => {
 
                 <Divider sx={{ mb: 2 }} />
 
-                {/* Sentiment + Topic */}
+                {/* ── Sentiment + Topic ── */}
                 <Grid container spacing={1} mb={2}>
                     <Grid size={6}>
                         <StatBlock accentcolor={sentMeta.color}>
                             <SectionLabel mb={0.5}>Sentiment</SectionLabel>
-                            <Typography variant="body2" fontWeight={700} fontFamily="monospace" color={sentMeta.color}>
+                            <Typography variant="body2" fontWeight={700} fontFamily="monospace" color={sentMeta.color}
+                                sx={{ textTransform: 'capitalize' }}>
                                 {sentMeta.label}
+                            </Typography>
+                            <Typography variant="caption" fontFamily="monospace" color="text.disabled">
+                                score: {(sentiment.score || 0).toFixed(3)}
                             </Typography>
                         </StatBlock>
                     </Grid>
                     <Grid size={6}>
                         <StatBlock accentcolor="#8b5cf6">
-                            <SectionLabel mb={0.5}>Topic</SectionLabel>
+                            <SectionLabel mb={0.5}>Primary Topic</SectionLabel>
                             <Typography variant="body2" fontWeight={700} fontFamily="monospace" color="#8b5cf6"
                                 sx={{ textTransform: 'capitalize' }}>
                                 {topic.primary_topic || '—'}
+                            </Typography>
+                            <Typography variant="caption" fontFamily="monospace" color="text.disabled">
+                                conf: {Math.round((topic.confidence || 0) * 100)}%
                             </Typography>
                         </StatBlock>
                     </Grid>
                 </Grid>
 
-                {/* Risk factors */}
+                {/* ── Conclusion box ── */}
+                {conclusion.action && (
+                    <Box sx={{
+                        p: 1.5, borderRadius: 2, mb: 2,
+                        bgcolor: concMeta.bg,
+                        border: `1px solid ${alpha(concMeta.color, 0.25)}`,
+                        display: 'flex', alignItems: 'flex-start', gap: 1.5,
+                    }}>
+                        <Typography sx={{ fontSize: 20, lineHeight: 1 }}>{conclusion.icon}</Typography>
+                        <Box>
+                            <Typography variant="body2" fontWeight={700} fontFamily="monospace" color={concMeta.color}>
+                                {conclusion.action_fr || conclusion.action}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary" fontFamily="monospace">
+                                {conclusion.summary}
+                            </Typography>
+                        </Box>
+                    </Box>
+                )}
+
+                {/* ── Author position ── */}
+                {author.stance && (
+                    <Box sx={{
+                        p: 1.5, borderRadius: 2, mb: 2,
+                        bgcolor: alpha(theme.palette.text.primary, 0.03),
+                        border: '1px solid', borderColor: 'divider',
+                    }}>
+                        <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
+                            <FaUserSecret size={12} color="#8b5cf6" />
+                            <SectionLabel>Author Position</SectionLabel>
+                        </Stack>
+                        <Typography variant="body2" fontWeight={700} fontFamily="monospace" mb={0.5}>
+                            {author.label || author.stance}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary" fontFamily="monospace">
+                            {author.description}
+                        </Typography>
+                        <Stack direction="row" spacing={0.75} mt={1} flexWrap="wrap">
+                            {author.is_alarming     && <Chip size="small" label="Alarmist"      sx={{ height: 18, fontSize: 9, fontFamily: 'monospace', bgcolor: alpha('#f59e0b', 0.1), color: '#f59e0b' }} />}
+                            {author.is_critical     && <Chip size="small" label="Critical"      sx={{ height: 18, fontSize: 9, fontFamily: 'monospace', bgcolor: alpha('#ef4444', 0.1), color: '#ef4444' }} />}
+                            {author.is_supportive   && <Chip size="small" label="Supportive"    sx={{ height: 18, fontSize: 9, fontFamily: 'monospace', bgcolor: alpha('#22c55e', 0.1), color: '#22c55e' }} />}
+                            {author.is_conspiratorial && <Chip size="small" label="Conspiratorial" sx={{ height: 18, fontSize: 9, fontFamily: 'monospace', bgcolor: alpha('#ef4444', 0.1), color: '#ef4444' }} />}
+                        </Stack>
+                    </Box>
+                )}
+
+                {/* ── AI Opinion ── */}
+                {aiOp.opinion && (
+                    <Box sx={{
+                        p: 1.5, borderRadius: 2, mb: 2,
+                        bgcolor: alpha('#3b82f6', 0.04),
+                        border: `1px solid ${alpha('#3b82f6', 0.15)}`,
+                    }}>
+                        <Stack direction="row" spacing={1} alignItems="center" mb={0.75}>
+                            <FaMicroscope size={12} color="#3b82f6" />
+                            <SectionLabel>AI Opinion</SectionLabel>
+                            <Box flex={1} />
+                            <Typography variant="caption" fontFamily="monospace" fontWeight={700}
+                                sx={{ color: aiOp.credibility === 'acceptable' ? '#22c55e' : '#f59e0b' }}>
+                                {aiOp.credibility_icon} {aiOp.credibility}
+                            </Typography>
+                        </Stack>
+                        <Typography variant="caption" color="text.secondary" fontFamily="monospace">
+                            {aiOp.opinion}
+                        </Typography>
+                        {aiOp.requires_verification && (
+                            <Chip size="small" label="Requires verification" icon={<FaExclamationTriangle size={8} />}
+                                sx={{ mt: 1, height: 18, fontSize: 9, fontFamily: 'monospace', bgcolor: alpha('#f59e0b', 0.1), color: '#f59e0b' }} />
+                        )}
+                    </Box>
+                )}
+
+                {/* ── Sahel violations ── */}
+                <Box sx={{
+                    p: 1.5, borderRadius: 2, mb: 2,
+                    bgcolor: sahel.sahel_safe
+                        ? alpha('#22c55e', 0.05)
+                        : alpha('#ef4444', 0.07),
+                    border: `1px solid ${alpha(sahel.sahel_safe ? '#22c55e' : '#ef4444', 0.2)}`,
+                }}>
+                    <Stack direction="row" spacing={1} alignItems="center" mb={0.5}>
+                        <FaGlobeAfrica size={12} color={sahel.sahel_safe ? '#22c55e' : '#ef4444'} />
+                        <SectionLabel>Sahel Context</SectionLabel>
+                    </Stack>
+                    <Typography variant="caption" fontFamily="monospace"
+                        color={sahel.sahel_safe ? '#22c55e' : '#ef4444'}>
+                        {sahel.summary}
+                    </Typography>
+                    {sahel.violation_count > 0 && (
+                        <Stack direction="row" spacing={0.5} mt={0.75} flexWrap="wrap">
+                            {sahel.violation_types.map((v, i) => (
+                                <Chip key={i} size="small" label={v}
+                                    sx={{ height: 18, fontSize: 9, fontFamily: 'monospace',
+                                        bgcolor: alpha('#ef4444', 0.1), color: '#ef4444' }} />
+                            ))}
+                        </Stack>
+                    )}
+                </Box>
+
+                {/* ── Risk factors ── */}
                 {risk.risk_factors?.length > 0 && (
                     <Box mb={2}>
                         <SectionLabel mb={1}>Risk Factors</SectionLabel>
@@ -261,20 +431,34 @@ const AnalysisResultCard = ({ analysis, contentId, text }) => {
                     </Box>
                 )}
 
-                {/* Toxicity breakdown */}
-                {Object.keys(toxicity.categories || {}).length > 0 && (
-                    <>
-                        <Button size="small" onClick={() => setOpen(!open)}
-                            endIcon={open ? <FaAngleUp size={10} /> : <FaAngleDown size={10} />}
+                {/* ── Topic distribution (collapsible) ── */}
+                {Object.keys(topic.topic_scores || {}).length > 0 && (
+                    <Box mb={2}>
+                        <Button size="small" onClick={() => setTopicOpen(!topicOpen)}
+                            endIcon={topicOpen ? <FaAngleUp size={10} /> : <FaAngleDown size={10} />}
                             sx={{ fontFamily: 'monospace', fontSize: 10, mb: 1, color: 'text.secondary' }}>
-                            {open ? 'Hide' : 'Show'} toxicity breakdown
+                            {topicOpen ? 'Hide' : 'Show'} topic distribution
                         </Button>
-                        <Collapse in={open}>
-                            <Stack spacing={0.75} mb={1}>
+                        <Collapse in={topicOpen}>
+                            <TopicBars topicScores={topic.topic_scores} />
+                        </Collapse>
+                    </Box>
+                )}
+
+                {/* ── Toxicity breakdown (collapsible) ── */}
+                {Object.keys(toxicity.categories || {}).length > 0 && (
+                    <Box mb={1}>
+                        <Button size="small" onClick={() => setToxOpen(!toxOpen)}
+                            endIcon={toxOpen ? <FaAngleUp size={10} /> : <FaAngleDown size={10} />}
+                            sx={{ fontFamily: 'monospace', fontSize: 10, mb: 1, color: 'text.secondary' }}>
+                            {toxOpen ? 'Hide' : 'Show'} toxicity breakdown
+                        </Button>
+                        <Collapse in={toxOpen}>
+                            <Stack spacing={0.75}>
                                 {Object.entries(toxicity.categories).map(([cat, score]) => (
                                     <Stack key={cat} direction="row" spacing={1.5} alignItems="center">
                                         <Typography variant="caption" fontFamily="monospace" color="text.secondary"
-                                            sx={{ minWidth: 110, textTransform: 'capitalize' }}>
+                                            sx={{ minWidth: 110, textTransform: 'capitalize', fontSize: 10 }}>
                                             {cat.replace(/_/g, ' ')}
                                         </Typography>
                                         <Box flex={1}>
@@ -289,23 +473,25 @@ const AnalysisResultCard = ({ analysis, contentId, text }) => {
                                                 }} />
                                         </Box>
                                         <Typography variant="caption" fontFamily="monospace" fontWeight={700}
-                                            sx={{ minWidth: 36, textAlign: 'right' }}>
+                                            sx={{ minWidth: 36, textAlign: 'right', fontSize: 10 }}>
                                             {Math.round(score * 100)}%
                                         </Typography>
                                     </Stack>
                                 ))}
                             </Stack>
                         </Collapse>
-                    </>
+                    </Box>
                 )}
 
-                {/* Footer */}
-                <Stack direction="row" justifyContent="space-between" alignItems="center" mt={1}>
+                {/* ── Footer ── */}
+                <Stack direction="row" justifyContent="space-between" alignItems="center" mt={2}
+                    sx={{ borderTop: '1px solid', borderColor: 'divider', pt: 1.5 }}>
                     <Typography variant="caption" color="text.disabled" fontFamily="monospace">
                         {analysis.analyzed_at ? new Date(analysis.analyzed_at).toLocaleString() : ''}
                     </Typography>
                     <Typography variant="caption" color="text.disabled" fontFamily="monospace">
-                        {analysis.duration_seconds != null ? `${analysis.duration_seconds}s` : ''}{analysis.device ? ` · ${analysis.device}` : ''}
+                        {analysis.duration_seconds != null ? `${analysis.duration_seconds}s` : ''}
+                        {analysis.device ? ` · ${analysis.device}` : ''}
                     </Typography>
                 </Stack>
             </Box>
@@ -317,14 +503,11 @@ const AnalysisResultCard = ({ analysis, contentId, text }) => {
 // CONTENT ROW
 // ============================================================================
 
-// FIX: onAnalyse signature is (id) only — text was passed but never used in
-//      the mutation; keeping the call site clean avoids confusion.
 const ContentAnalysisRow = ({ content, onAnalyse, loading }) => {
     const analysis = content.ai_analysis;
     const risk     = analysis?.disinformation_risk;
     const riskMeta = RISK_META[risk?.risk_level] || null;
     const RiskIcon = riskMeta?.icon;
-
     const contentId = content._id || content.id;
 
     return (
@@ -367,7 +550,7 @@ const ContentAnalysisRow = ({ content, onAnalyse, loading }) => {
                 variant={analysis ? 'outlined' : 'contained'}
                 startIcon={loading ? <CircularProgress size={10} /> : <FaBrain size={10} />}
                 disabled={loading}
-                onClick={() => onAnalyse(contentId)}   // FIX: only pass id
+                onClick={() => onAnalyse(contentId)}
                 sx={{ fontFamily: 'monospace', fontSize: 10, whiteSpace: 'nowrap', flexShrink: 0 }}
             >
                 {analysis ? 'Re-analyse' : 'Analyse'}
@@ -375,6 +558,31 @@ const ContentAnalysisRow = ({ content, onAnalyse, loading }) => {
         </Box>
     );
 };
+
+// ============================================================================
+// LANGUAGE SELECTOR COMPONENT
+// ============================================================================
+
+const LanguageSelector = ({ value, onChange }) => (
+    <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+        <InputLabel sx={{ fontFamily: 'monospace', fontSize: 12 }}>
+            Language / Langue
+        </InputLabel>
+        <Select
+            value={value}
+            label="Language / Langue"
+            onChange={(e) => onChange(e.target.value)}
+            sx={{ fontFamily: 'monospace', fontSize: 12 }}
+        >
+            {LANGUAGES.map((l) => (
+                <MenuItem key={l.value} value={l.value}
+                    sx={{ fontFamily: 'monospace', fontSize: 12 }}>
+                    {l.label}
+                </MenuItem>
+            ))}
+        </Select>
+    </FormControl>
+);
 
 // ============================================================================
 // MAIN PAGE
@@ -388,41 +596,45 @@ const Analyser = () => {
 
     const [tab, setTab]             = useState(0);
     const [rawText, setRawText]     = useState('');
+    const [language, setLanguage]   = useState('fr');
     const [contentId, setContentId] = useState('');
     const [sessionId, setSessionId] = useState('');
     const [results, setResults]     = useState([]);
     const [analyzingIds, setAnalyzingIds] = useState(new Set());
 
-    // ── FIX: correct URL — mounted at /api/v2/osint, not /api/v2/scraper ────
+    // ── Content list ────────────────────────────────────────────────────────
     const { data: contentList, isLoading: loadingContent } = useQuery({
         queryKey: ['analyser-content-list'],
         queryFn: () =>
             axiosPrivate
-                .get('/api/v2/osint/analysts/content?page_size=30&sort_by=scraped_at')
+                .get('/api/v2/scraper/content')
                 .then(r => r.data?.data || [])
-                .catch(() => []),   // FIX: graceful fallback — never crashes tab 1
+                .catch(() => []),
         staleTime: 30_000,
         retry: 1,
     });
 
-    // ── FIX: correct URL for sessions ───────────────────────────────────────
+    // ── Session list ────────────────────────────────────────────────────────
     const { data: sessionList, isLoading: loadingSessions } = useQuery({
         queryKey: ['analyser-session-list'],
         queryFn: () =>
             axiosPrivate
-                .get('/api/v2/osint/analysts/sessions?page_size=20&sort_by=started_at')
+                .get('/api/v2/scraper/sessions')
                 .then(r => r.data?.data || [])
-                .catch(() => []),   // FIX: graceful fallback — never crashes tab 2
+                .catch(() => []),
         staleTime: 30_000,
         retry: 1,
     });
 
-    // ── Raw text mutation — /api/v2/analysis/text ────────────────────────────
-    // Requires main.py to register analysis_routes at prefix /api/v2/analysis
+    // ── Raw text mutation ────────────────────────────────────────────────────
     const rawMutation = useMutation({
         mutationFn: (text) =>
             axiosPrivate
-                .post('/api/v2/analysis/text', { text, include_topic: true })
+                .post('/api/v2/analysis/text', {
+                    text,
+                    language,           // ← sends selected language to backend
+                    include_topic: true,
+                })
                 .then(r => r.data),
         onSuccess: (data) => {
             setResults(prev => [{
@@ -433,14 +645,13 @@ const Analyser = () => {
         },
     });
 
-    // ── Content ID mutation — /api/v2/analysis/content/{id} ─────────────────
+    // ── Content ID mutation ──────────────────────────────────────────────────
     const contentMutation = useMutation({
         mutationFn: (id) =>
             axiosPrivate
-                .post(`/api/v2/analysis/content/${id}`)
+                .post(`/api/v2/analysis/content/${id}`, { language })
                 .then(r => r.data),
         onSuccess: (data, id) => {
-            // FIX: always remove old result for this id first, then prepend fresh one
             setResults(prev => [
                 { contentId: id, analysis: data.analysis, id: Date.now() },
                 ...prev.filter(r => r.contentId !== id),
@@ -453,15 +664,15 @@ const Analyser = () => {
         },
     });
 
-    // ── Session bulk mutation — /api/v2/analysis/bulk/session/{id} ───────────
+    // ── Session bulk mutation ────────────────────────────────────────────────
     const sessionMutation = useMutation({
         mutationFn: (id) =>
             axiosPrivate
-                .post(`/api/v2/analysis/bulk/session/${id}?limit=50`)
+                .post(`/api/v2/analysis/bulk/session/${id}?limit=50`, { language })
                 .then(r => r.data),
     });
 
-    // ── Flagged summary (admin) — /api/v2/analysis/flagged/summary ───────────
+    // ── Flagged summary (admin) ──────────────────────────────────────────────
     const { data: flaggedSummary } = useQuery({
         queryKey: ['analyser-flagged-summary'],
         queryFn: () =>
@@ -474,14 +685,13 @@ const Analyser = () => {
         retry: 1,
     });
 
-    // ── Handlers ─────────────────────────────────────────────────────────────
+    // ── Handlers ──────────────────────────────────────────────────────────────
 
     const handleRawAnalyse = () => {
         if (rawText.trim().length < 10) return;
         rawMutation.mutate(rawText.trim());
     };
 
-    // FIX: only one argument — content row now correctly calls onAnalyse(id)
     const handleContentAnalyse = (id) => {
         setAnalyzingIds(prev => new Set(prev).add(id));
         contentMutation.mutate(id);
@@ -507,13 +717,13 @@ const Analyser = () => {
                             AI Content Analyser
                         </Typography>
                         <Typography variant="caption" color="text.disabled" fontFamily="monospace" letterSpacing={1}>
-                            DISINFORMATION · HATE SPEECH · TOXICITY · SENTIMENT
+                            DISINFORMATION · HATE SPEECH · TOXICITY · SENTIMENT · SAHEL CONTEXT
                         </Typography>
                     </Box>
                 </Stack>
             </Box>
 
-            {/* Admin KPIs — shown always (not gated on results.length) */}
+            {/* Admin KPIs */}
             {isAdmin && flaggedSummary?.summary && (
                 <Grid container spacing={2} mb={3}>
                     {[
@@ -541,7 +751,7 @@ const Analyser = () => {
 
             <Grid container spacing={3}>
 
-                {/* LEFT: Input panel */}
+                {/* ── LEFT: Input panel ── */}
                 <Grid size={{ xs: 12, md: 5 }}>
                     <GlassCard elevation={0} sx={{ p: 0, overflow: 'hidden', position: 'sticky', top: 16 }}>
 
@@ -562,9 +772,12 @@ const Analyser = () => {
                             {/* TAB 0 — Raw text */}
                             {tab === 0 && (
                                 <Stack spacing={2}>
+                                    {/* Language selector */}
+                                    <LanguageSelector value={language} onChange={setLanguage} />
+
                                     <SectionLabel>Paste or type text to analyse</SectionLabel>
                                     <TextField
-                                        multiline rows={8} fullWidth
+                                        multiline rows={7} fullWidth
                                         placeholder="Ce gouvernement ment au peuple, c'est de la propagande..."
                                         value={rawText}
                                         onChange={(e) => setRawText(e.target.value)}
@@ -576,7 +789,7 @@ const Analyser = () => {
                                     />
                                     <Stack direction="row" justifyContent="space-between" alignItems="center">
                                         <Typography variant="caption" color="text.disabled" fontFamily="monospace">
-                                            {rawText.length} chars
+                                            {rawText.length} chars · {LANGUAGES.find(l => l.value === language)?.label}
                                         </Typography>
                                         <Button
                                             variant="contained"
@@ -601,6 +814,9 @@ const Analyser = () => {
                             {/* TAB 1 — Content list */}
                             {tab === 1 && (
                                 <Stack spacing={2}>
+                                    {/* Language selector */}
+                                    <LanguageSelector value={language} onChange={setLanguage} />
+
                                     <Stack direction="row" alignItems="center" justifyContent="space-between">
                                         <SectionLabel>Your scraped content</SectionLabel>
                                         <IconButton size="small"
@@ -638,7 +854,7 @@ const Analyser = () => {
                                     {loadingContent
                                         ? <CircularProgress size={24} sx={{ alignSelf: 'center' }} />
                                         : (
-                                            <Stack spacing={0.5} sx={{ maxHeight: 420, overflowY: 'auto' }}>
+                                            <Stack spacing={0.5} sx={{ maxHeight: 380, overflowY: 'auto' }}>
                                                 {contentList?.map((c, i) => (
                                                     <ContentAnalysisRow
                                                         key={c._id || i}
@@ -660,6 +876,9 @@ const Analyser = () => {
                             {/* TAB 2 — Session bulk */}
                             {tab === 2 && (
                                 <Stack spacing={2}>
+                                    {/* Language selector */}
+                                    <LanguageSelector value={language} onChange={setLanguage} />
+
                                     <SectionLabel>Bulk analyse all content from a session</SectionLabel>
 
                                     <Stack direction="row" spacing={1}>
@@ -681,7 +900,6 @@ const Analyser = () => {
                                         </Button>
                                     </Stack>
 
-                                    {/* FIX: use sessionMutation.data directly — was missing null-guard */}
                                     {sessionMutation.isSuccess && sessionMutation.data && (
                                         <Alert severity="success" sx={{ fontFamily: 'monospace', fontSize: 11 }}>
                                             Queued {sessionMutation.data.queued ?? 0} items for background analysis.
@@ -700,7 +918,7 @@ const Analyser = () => {
                                     {loadingSessions
                                         ? <CircularProgress size={24} sx={{ alignSelf: 'center' }} />
                                         : (
-                                            <Stack spacing={0.5} sx={{ maxHeight: 360, overflowY: 'auto' }}>
+                                            <Stack spacing={0.5} sx={{ maxHeight: 300, overflowY: 'auto' }}>
                                                 {sessionList?.map((s, i) => (
                                                     <Box key={s._id || i}
                                                         onClick={() => setSessionId(s._id)}
@@ -740,7 +958,7 @@ const Analyser = () => {
                     </GlassCard>
                 </Grid>
 
-                {/* RIGHT: Results panel */}
+                {/* ── RIGHT: Results panel ── */}
                 <Grid size={{ xs: 12, md: 7 }}>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" mb={2}>
                         <SectionLabel>
@@ -779,7 +997,7 @@ const Analyser = () => {
                         ))}
                     </Stack>
 
-                    {/* Admin: recently auto-flagged — only shown when no user-triggered results */}
+                    {/* Admin: recently auto-flagged */}
                     {isAdmin && flaggedSummary?.recent_flagged?.length > 0 && results.length === 0 && (
                         <Box mt={3}>
                             <SectionLabel mb={2}>RECENTLY AUTO-FLAGGED</SectionLabel>

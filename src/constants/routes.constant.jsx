@@ -35,7 +35,8 @@ export const AdminRoutes = {
     Filters: "analysis/filters",
     Models: "analysis/models",
     EntitiesView:"analysis/entites/:entityId",
-    SessionContent:"analysis/sessions-content/:contentId"
+    ContentView:"analysis/content/:contentId",
+    SessionContent:"analysis/sessions-content/:sessionId",
   },
   
   // Insights routes

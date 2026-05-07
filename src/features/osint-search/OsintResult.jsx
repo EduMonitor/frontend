@@ -532,7 +532,7 @@ export default function OsintResults() {
             {activeTab === "content" && items.map((c) => (
               <Grid size={{ md: 4, sm: 6, xs: 12 }} key={c._id}>
                 <ContentCard content={c}
-                  onView={() => navigate(`/ai/analysis/sessions-content/${c._id}`)}
+                  onView={() => navigate(`/ai/analysis/content/${c._id}`)}
                   onFlag={() => handleFlag(c, "content")}
                   onDelete={() => handleDeleteClick(c)} />
               </Grid>

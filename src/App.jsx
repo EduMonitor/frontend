@@ -30,7 +30,7 @@ import UserDetail from "./features/users/Details.users";
 import OsintNewSearch from "./features/osint-search/OsintNewSearch";
 import OsintResults from "./features/osint-search/OsintResult";
 import EntityDetail from "./features/osint-search/EntityDetails";
-import { ContentDetail } from "./features/osint-search/ContentSessionDetails";
+import { ContentDetail, SessionDetail } from "./features/osint-search/ContentSessionDetails";
 import OsintFilters from "./features/osint-search/FiltersOsint";
 import AddUser from "./features/users/Add.users";
 import EditUser from "./features/users/Edit.users";
@@ -89,7 +89,8 @@ const App = memo(() => {
             <Route path={AdminRoutes.Analysis.Results} element={<PrivateRoute element={<OsintResults/>} allowedRoles={['admin','user']}/> }/>
             <Route path={AdminRoutes.Analysis.Filters} element={<PrivateRoute element={<OsintFilters/>} allowedRoles={['admin','user']}/> }/>
             <Route path={AdminRoutes.Analysis.EntitiesView} element={<PrivateRoute element={<EntityDetail/>} allowedRoles={['admin','user']}/> }/>
-            <Route path={AdminRoutes.Analysis.SessionContent} element={<PrivateRoute element={<ContentDetail/>} allowedRoles={['admin','user']}/> }/>
+            <Route path={AdminRoutes.Analysis.SessionContent} element={<PrivateRoute element={<SessionDetail/>} allowedRoles={['admin','user']}/> }/>
+            <Route path={AdminRoutes.Analysis.ContentView} element={<PrivateRoute element={<ContentDetail/>} allowedRoles={['admin','user']}/> }/>
 
           </Route>
         </Routes>

@@ -6,16 +6,15 @@ import {
   Box, Typography, Grid, Chip, Button, Stack, Paper, Alert,
   Divider, CircularProgress, FormControlLabel, Checkbox, LinearProgress,
 } from "@mui/material";
-import {  alpha, useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import { FaArrowLeft, FaTrash, FaFlag, FaExternalLinkAlt } from "react-icons/fa";
 import useAxiosPrivate from "../../utils/hooks/instance/axiosprivate.instance";
 import useToast from "../../components/toast/toast.toast";
+import CustomModal from "../../components/modal/Custome.modal";
 
 const PLT_COLORS = { facebook: "#4267B2", twitter: "#1DA1F2", linkedin: "#0077B5", instagram: "#E4405F", youtube: "#FF0000", tiktok: "#69C9D0", reddit: "#FF4500" };
 const STATUS_COLORS = { completed: "#4ade80", running: "#22d3ee", failed: "#f87171" };
 const fmt = (d) => d ? new Date(d).toLocaleString("fr-FR") : "—";
-
-// ── MetaRow ────────────────────────────────────────────────────────────────────
 
 const MetaRow = ({ label, value, mono }) => {
   const theme = useTheme();
@@ -31,8 +30,6 @@ const MetaRow = ({ label, value, mono }) => {
   );
 };
 
-// ── SessionDetail ──────────────────────────────────────────────────────────────
-
 export function SessionDetail() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
@@ -42,6 +39,8 @@ export function SessionDetail() {
 
   const [showContent, setShowContent] = useState(false);
   const [deleteRelated, setDeleteRelated] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false); // NEW
+  const [isDeleting, setIsDeleting] = useState(false);           // NEW
 
   const { data, isLoading } = useQuery({
     queryKey: ["session", sessionId, showContent],
@@ -50,11 +49,19 @@ export function SessionDetail() {
     staleTime: 30000,
   });
 
+  // NEW: actual delete logic, called from modal confirm
   const handleDelete = async () => {
-    if (!window.confirm("Supprimer cette session ?")) return;
-    await axiosPrivate.delete(`/api/v2/scraper/sessions/${sessionId}?delete_related=${deleteRelated}`);
-    showToast({ description: "Session supprimée", status: "success" });
-    navigate("/ai/analysis/results");
+    setIsDeleting(true);
+    try {
+      await axiosPrivate.delete(`/api/v2/scraper/sessions/${sessionId}?delete_related=${deleteRelated}`);
+      showToast({ description: "Session supprimée", status: "success" });
+      navigate("/ai/analysis/results");
+    } catch {
+      showToast({ description: "Erreur lors de la suppression", status: "error" });
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+    }
   };
 
   if (isLoading) return (
@@ -85,7 +92,8 @@ export function SessionDetail() {
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Button startIcon={<FaArrowLeft size={12} />} onClick={() => navigate("/ai/analysis/results")}
             sx={{ color: "text.disabled", fontFamily: "monospace", fontSize: 12, letterSpacing: 1 }}>RETOUR</Button>
-          <Button size="small" variant="outlined" startIcon={<FaTrash size={11} />} onClick={handleDelete}
+          {/* CHANGED: open modal instead of confirm */}
+          <Button size="small" variant="outlined" startIcon={<FaTrash size={11} />} onClick={() => setDeleteModalOpen(true)}
             sx={{ borderColor: alpha("#f87171", 0.3), color: "#f87171", fontFamily: "monospace", fontWeight: 700, fontSize: 11 }}>
             SUPPRIMER
           </Button>
@@ -172,7 +180,7 @@ export function SessionDetail() {
               entities.map((e) => (
                 <Stack key={e._id} direction="row" alignItems="center" spacing={1.5}
                   sx={{ px: 2.5, py: 1.5, borderBottom: `1px solid ${theme.palette.divider}`, cursor: "pointer", "&:hover": { bgcolor: theme.palette.action.hover } }}
-                  onClick={() => navigate(`/ai/analysis/entities/${e._id}`)}>
+                  onClick={() => navigate(`/ai/analysis/entites/${e._id}`)}>
                   <Box sx={{ width: 8, height: 8, borderRadius: "50%", bgcolor: PLT_COLORS[e.platform] || theme.palette.divider, flexShrink: 0 }} />
                   <Box flex={1}>
                     <Typography variant="caption" fontWeight={700} color="text.primary" fontFamily="monospace">{e.name || e.username || "Inconnu"}</Typography>
@@ -240,24 +248,58 @@ export function SessionDetail() {
             </Paper>
           )}
 
-          {/* Danger Zone */}
+          {/* Danger Zone — checkbox removed, now lives in modal */}
           <Paper elevation={0} sx={{ ...paperSx, p: 2.5, borderColor: `${alpha("#f87171", 0.15)} !important` }}>
             <Typography variant="caption" fontWeight={700} color="text.disabled" letterSpacing={2} fontFamily="monospace" display="block" mb={1.5}>
               ZONE DE DANGER
             </Typography>
-            <FormControlLabel
-              control={<Checkbox checked={deleteRelated} onChange={e => setDeleteRelated(e.target.checked)} size="small"
-                sx={{ color: "#f87171", "&.Mui-checked": { color: "#f87171" } }} />}
-              label={<Typography variant="caption" color="text.secondary">Supprimer aussi les entités et contenus liés</Typography>}
-              sx={{ mb: 2, display: "flex" }}
-            />
-            <Button fullWidth variant="outlined" startIcon={<FaTrash size={12} />} onClick={handleDelete}
+            <Button fullWidth variant="outlined" startIcon={<FaTrash size={12} />} onClick={() => setDeleteModalOpen(true)}
               sx={{ borderColor: alpha("#f87171", 0.3), color: "#f87171", bgcolor: alpha("#f87171", 0.05), fontFamily: "monospace", fontWeight: 700, fontSize: 12, "&:hover": { bgcolor: alpha("#f87171", 0.12), borderColor: "#f87171" } }}>
-              SUPPRIMER LA SESSION {deleteRelated ? "+ DONNÉES LIÉES" : ""}
+              SUPPRIMER LA SESSION
             </Button>
           </Paper>
         </Stack>
       </Box>
+
+      {/* DELETE MODAL */}
+      <CustomModal
+        open={deleteModalOpen}
+        onClose={() => !isDeleting && setDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        title="Supprimer la session"
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        confirmColor="error"
+        isLoading={isDeleting}
+        maxWidth="xs"
+      >
+        <Stack spacing={2}>
+          <Typography variant="body2" color="text.secondary">
+            Cette action est irréversible. La session <strong>"{session.query}"</strong> sera définitivement supprimée.
+          </Typography>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={deleteRelated}
+                onChange={(e) => setDeleteRelated(e.target.checked)}
+                size="small"
+                sx={{ color: "#f87171", "&.Mui-checked": { color: "#f87171" } }}
+              />
+            }
+            label={
+              <Typography variant="caption" color="text.secondary">
+                Supprimer aussi les entités et contenus liés
+              </Typography>
+            }
+          />
+          {deleteRelated && (
+            <Alert severity="warning" sx={{ py: 0.5, fontSize: 12 }}>
+              {(data?.entities_count ?? 0)} entité(s) et {(data?.content_count ?? 0)} contenu(s) seront supprimés.
+            </Alert>
+          )}
+        </Stack>
+      </CustomModal>
+
       {ToastComponent}
     </Box>
   );
@@ -276,6 +318,9 @@ export function ContentDetail() {
   const { showToast, ToastComponent } = useToast();
   const theme = useTheme();
 
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false); // NEW
+  const [isDeleting, setIsDeleting] = useState(false);           // NEW
+
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["content", contentId],
     queryFn: async () => (await axiosPrivate.get(`/api/v2/scraper/content/${contentId}`)).data,
@@ -288,10 +333,19 @@ export function ContentDetail() {
     refetch(); queryClient.invalidateQueries(["osint-stats"]);
   };
 
+  // NEW: actual delete logic, called from modal confirm
   const handleDelete = async () => {
-    if (!window.confirm("Supprimer ce contenu ?")) return;
-    await axiosPrivate.delete(`/api/v2/scraper/content/${contentId}`);
-    navigate("/ai/analysis/results");
+    setIsDeleting(true);
+    try {
+      await axiosPrivate.delete(`/api/v2/scraper/content/${contentId}`);
+      showToast({ description: "Contenu supprimé", status: "success" });
+      navigate("/ai/analysis/results");
+    } catch {
+      showToast({ description: "Erreur lors de la suppression", status: "error" });
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+    }
   };
 
   if (isLoading) return (
@@ -328,7 +382,8 @@ export function ContentDetail() {
               { label: content.flagged ? "RETIRER SIGNAL" : "SIGNALER", color: content.flagged ? "#f87171" : "#fbbf24", onClick: handleFlag },
               { label: "OUVRIR URL", color: "#22d3ee", onClick: () => window.open(content.url, "_blank") },
               ...(entity ? [{ label: "VOIR ENTITÉ", color: "#a78bfa", onClick: () => navigate(`/ai/osint/entities/${entity._id}`) }] : []),
-              { label: "SUPPRIMER", color: "#f87171", onClick: handleDelete },
+              // CHANGED: open modal instead of confirm
+              { label: "SUPPRIMER", color: "#f87171", onClick: () => setDeleteModalOpen(true) },
             ].map((btn) => (
               <Button key={btn.label} size="small" variant="outlined" onClick={btn.onClick}
                 sx={{ borderColor: alpha(btn.color, 0.3), color: btn.color, fontFamily: "monospace", fontWeight: 700, fontSize: 11, "&:hover": { borderColor: btn.color, bgcolor: alpha(btn.color, 0.08) } }}>
@@ -517,6 +572,24 @@ export function ContentDetail() {
           </Stack>
         </Grid>
       </Grid>
+
+      {/* DELETE MODAL */}
+      <CustomModal
+        open={deleteModalOpen}
+        onClose={() => !isDeleting && setDeleteModalOpen(false)}
+        onConfirm={handleDelete}
+        title="Supprimer le contenu"
+        confirmText="Supprimer"
+        cancelText="Annuler"
+        confirmColor="error"
+        isLoading={isDeleting}
+        maxWidth="xs"
+      >
+        <Typography variant="body2" color="text.secondary">
+          Cette action est irréversible. Ce contenu sera définitivement supprimé.
+        </Typography>
+      </CustomModal>
+
       {ToastComponent}
     </Box>
   );
