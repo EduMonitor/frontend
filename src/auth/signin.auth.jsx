@@ -168,7 +168,7 @@ const SignInAuth = () => {
         }
 
         showToast({
-          title: !statuCode && apiError.status === "locked" ? "Account Locked" : "Login Failed",
+          title: !statuCode && apiError.status === "locked" ? "Account Locked" : "",
           description: apiError.message,
           status: statuCode ? "warning" : "error"
         });

@@ -77,7 +77,7 @@ const ForgotPages = () => {
       }
     } catch (error) {
       if (error.response && error.response.data) {
-        showToast({ title: "", description: error.response.data.message, status: "error" });
+        showToast({ title: "", description: error.response.data.detail?.message, status: "error" });
         if(error.response.data.errors) {
           setErrors(error.response.data.errors);
         }

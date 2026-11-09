@@ -60,12 +60,12 @@ export const sidebarMenuItems = (userRoles = []) => {
     },
 
     // // ── MONITORING ───────────────────────────────────────────────
-    // {
-    //   path: p(constant.Monitoring.Feed),
-    //   name: "Live Feed",
-    //   icon: FaGlobe,
-    //   allowRoles: roles.all,
-    // },
+    {
+      path: p(constant.Monitoring.Feed),
+      name: "Live Feed",
+      icon: FaGlobe,
+      allowRoles: roles.all,
+    },
     // ── MONITORING ───────────────────────────────────────────────
     {
       path: p(constant.analystics),
@@ -73,12 +73,12 @@ export const sidebarMenuItems = (userRoles = []) => {
       icon: FaChartLine,
       allowRoles: roles.all,
     },
-    // {
-    //   path: p(constant.Monitoring.Keywords),
-    //   name: "Alertes Mots-clés",
-    //   icon: FaBell,
-    //   allowRoles: roles.all,
-    // },
+    {
+      path: p(constant.Monitoring.Keywords),
+      name: "Alertes Mots-clés",
+      icon: FaBell,
+      allowRoles: roles.all,
+    },
 
     // ── ADMIN ────────────────────────────────────────────────────
     {
