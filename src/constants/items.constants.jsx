@@ -13,6 +13,9 @@ import {
   FaPlus,
   FaShieldAlt,
   FaLock,
+  FaBalanceScale,
+  FaFolderOpen,
+  FaUserSecret,
 } from "react-icons/fa";
 import { AdminRoutes } from "./routes.constant";
 
@@ -56,6 +59,27 @@ export const sidebarMenuItems = (userRoles = []) => {
       path: p(constant.Analysis.Filters),
       name: "Filtres",
       icon: FaShieldAlt,
+      allowRoles: roles.all,
+    },
+
+    // ── FACT-CHECK ───────────────────────────────────────────────
+    {
+      path: p(constant.FactCheck.Collect),
+      name: "Collecte de preuves",
+      icon: FaBalanceScale,
+      allowRoles: roles.all,
+    },
+    {
+      path: p(constant.FactCheck.Dossiers),
+      name: "Dossiers",
+      icon: FaFolderOpen,
+      allowRoles: roles.all,
+    },
+
+    {
+      path: p(constant.Actors.Monitor),
+      name: "Surveillance acteurs",
+      icon: FaUserSecret,
       allowRoles: roles.all,
     },
 

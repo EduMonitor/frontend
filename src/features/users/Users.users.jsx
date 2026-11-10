@@ -402,13 +402,30 @@ const StaffLists = React.memo(() => {
     const handleConfirmDelete = useCallback(async () => {
         setIsLoading(true);
         try {
-            const response = await axiosPrivate.delete(`/api/v2/auth/user/${selectedDeleteRow?.uuid}`);
+            // Backend route is DELETE /api/v2/user/admin/users/{user_id}
+            // (app/routes/users.py). The old /api/v2/auth/user/{uuid}
+            // path was never served and always 404'd.
+            const response = await axiosPrivate.delete(
+                `/api/v2/user/admin/users/${selectedDeleteRow?.uuid}`
+            );
             if (response.status === 200) {
                 showToast({ description: response.data.message, status: "success" });
                 refetch();
             }
         } catch (err) {
-            showToast({ description: err.message, status: "error" });
+            // Surface what the API actually said. `err.message` is only the
+            // axios wrapper ("Request failed with status code 404"), which hid
+            // the real reason — FastAPI puts it in response.data.detail.
+            const apiError = err?.response?.data?.detail
+                || err?.response?.data?.error?.message
+                || err?.response?.data?.message
+                || err?.message
+                || "Suppression impossible";
+            showToast({
+                title: `Erreur ${err?.response?.status || ""}`.trim(),
+                description: typeof apiError === "string" ? apiError : JSON.stringify(apiError),
+                status: "error",
+            });
         } finally {
             setShowDeleteModal(false);
             setSelectedDeleteRow(null);

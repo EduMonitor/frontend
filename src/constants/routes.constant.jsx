@@ -39,6 +39,18 @@ export const AdminRoutes = {
     SessionContent:"analysis/sessions-content/:sessionId",
   },
   
+  // Fact-check collection routes (backend: /api/v2/factcheck)
+  FactCheck: {
+    Collect: "factcheck/collect",
+    Dossiers: "factcheck/dossiers",
+    DossierView: "factcheck/dossiers/:runId",
+  },
+
+  // Actor-centric disinformation monitoring (backend: /api/v2/actors)
+  Actors: {
+    Monitor: "actors/monitor",
+  },
+
   // Insights routes
   Insights: {
     Trends: "insights/trends",

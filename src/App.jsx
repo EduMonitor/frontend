@@ -36,6 +36,13 @@ import AddUser from "./features/users/Add.users";
 import EditUser from "./features/users/Edit.users";
 import Analyser from "./features/analyser/Analyzer.analyser";
 
+// Fact-check collection (backend: /api/v2/factcheck) — lazy: the streaming
+// collector and the dossier viewer are not needed on first paint.
+const FactCheckCollect = lazy(() => import("./features/factcheck/FactCheckCollect"));
+const FactCheckDossiers = lazy(() => import("./features/factcheck/Dossiers"));
+const FactCheckDossierDetails = lazy(() => import("./features/factcheck/DossierDetails"));
+const ActorMonitor = lazy(() => import("./features/actors/ActorMonitor"));
+
 // Single optimized loading component for all routes
 const LoadingFallback = memo(() => (
   <Spinner
@@ -91,6 +98,14 @@ const App = memo(() => {
             <Route path={AdminRoutes.Analysis.EntitiesView} element={<PrivateRoute element={<EntityDetail/>} allowedRoles={['admin','user']}/> }/>
             <Route path={AdminRoutes.Analysis.SessionContent} element={<PrivateRoute element={<SessionDetail/>} allowedRoles={['admin','user']}/> }/>
             <Route path={AdminRoutes.Analysis.ContentView} element={<PrivateRoute element={<ContentDetail/>} allowedRoles={['admin','user']}/> }/>
+
+            {/* Fact-check evidence collection */}
+            <Route path={AdminRoutes.FactCheck.Collect} element={<PrivateRoute element={<FactCheckCollect/>} allowedRoles={['admin','user']}/> }/>
+            <Route path={AdminRoutes.FactCheck.Dossiers} element={<PrivateRoute element={<FactCheckDossiers/>} allowedRoles={['admin','user']}/> }/>
+            <Route path={AdminRoutes.FactCheck.DossierView} element={<PrivateRoute element={<FactCheckDossierDetails/>} allowedRoles={['admin','user']}/> }/>
+
+            {/* Actor-centric disinformation monitoring */}
+            <Route path={AdminRoutes.Actors.Monitor} element={<PrivateRoute element={<ActorMonitor/>} allowedRoles={['admin','user']}/> }/>
 
           </Route>
         </Routes>
